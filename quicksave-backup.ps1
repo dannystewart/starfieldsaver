@@ -7,11 +7,14 @@ $secondsForRetry = 5
 # Function to check if a path exists and return the valid path
 function Get-ValidPath {
     param (
+        [string]$steamPath,
         [string]$defaultPath,
         [string]$alternativePath
     )
 
-    if (Test-Path $defaultPath) {
+    if (Test-Path $steamPath) {
+        return $steamPath
+    } elseif (Test-Path $defaultPath) {
         return $defaultPath
     } elseif (Test-Path $alternativePath) {
         return $alternativePath
@@ -27,11 +30,27 @@ function Get-ValidPath {
     }
 }
 
+# Function to get the Steam Cloud save path
+function Get-SteamCloudPath {
+    $steamUserdataPath = "C:\Program Files (x86)\Steam\userdata"
+    if (Test-Path $steamUserdataPath) {
+        $steamUserID = Get-ChildItem -Path $steamUserdataPath | Select-Object -First 1
+        if ($steamUserID) {
+            $steamCloudPath = Join-Path -Path $steamUserID.FullName -ChildPath "1716740\remote\Saves"
+            if (Test-Path $steamCloudPath) {
+                return $steamCloudPath
+            }
+        }
+    }
+    return $null
+}
+
 # Initialize variables
 $currentUser = [System.Environment]::UserName
 $defaultPath = "C:\Users\$currentUser\Documents\My Games\Starfield\Saves"
 $alternativePath = "C:\Users\$currentUser\OneDrive\Documents\My Games\Starfield\Saves"
-$validPath = Get-ValidPath -defaultPath $defaultPath -alternativePath $alternativePath
+$steamCloudPath = Get-SteamCloudPath
+$validPath = Get-ValidPath -steamPath $steamCloudPath -defaultPath $defaultPath -alternativePath $alternativePath
 
 # Initialize counter for retries
 $retryCounter = 0
