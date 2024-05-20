@@ -106,14 +106,14 @@ $retryCounter = 0
         Copy-Item $quicksaveFile.FullName $backupFileName
     }
 #>
-function Save-QuicksaveFile {
+function Save-Quicksave {
     param (
         [ScriptBlock]$operation
     )
 
     do {
         try {
-            $operation.Invoke()
+            $operation.Invoke() | Out-Null
             return $true
         }
         catch {
