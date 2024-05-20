@@ -1,6 +1,6 @@
 # Configurable variables
 $quicksavesToKeep = 5
-$quicksaveInteralSeconds = 10
+$quicksaveIntervalSeconds = 10
 $numberOfRetries = 3
 $secondsForRetry = 5
 
@@ -11,33 +11,33 @@ $secondsForRetry = 5
 .PARAMETER steamPath
     The path to the Steam Cloud save folder.
 
-.PARAMETER defaultPath
+.PARAMETER documentsPath
     The default path to the Starfield save folder in Documents.
 
-.PARAMETER alternativePath
+.PARAMETER oneDrivePath
     The alternative path to the Starfield save folder in OneDrive.
 
 .RETURNS
     A string representing the first valid path.
 
 .EXAMPLE
-    $validPath = Get-ValidPath -steamPath $steamCloudPath -defaultPath $defaultPath -alternativePath $alternativePath
+    $validPath = Get-ValidPath -steamPath $steamPath -documentsPath $documentsPath -oneDrivePath $oneDrivePath
 #>
 function Get-ValidPath {
     param (
         [string]$steamPath,
-        [string]$defaultPath,
-        [string]$alternativePath
+        [string]$documentsPath,
+        [string]$oneDrivePath
     )
 
     if (Test-Path $steamPath) {
         return $steamPath
     }
-    elseif (Test-Path $defaultPath) {
-        return $defaultPath
+    elseif (Test-Path $documentsPath) {
+        return $documentsPath
     }
-    elseif (Test-Path $alternativePath) {
-        return $alternativePath
+    elseif (Test-Path $oneDrivePath) {
+        return $oneDrivePath
     }
     else {
         do {
@@ -64,16 +64,16 @@ function Get-ValidPath {
     A string representing the Steam Cloud save path, or $null if the path does not exist.
 
 .EXAMPLE
-    $steamCloudPath = Get-SteamCloudPath
+    $steamPath = Get-SteamPath
 #>
-function Get-SteamCloudPath {
+function Get-SteamPath {
     $steamUserdataPath = "C:\Program Files (x86)\Steam\userdata"
     if (Test-Path $steamUserdataPath) {
         $steamUserID = Get-ChildItem -Path $steamUserdataPath | Select-Object -First 1
         if ($steamUserID) {
-            $steamCloudPath = Join-Path -Path $steamUserID.FullName -ChildPath "1716740\remote\Saves"
-            if (Test-Path $steamCloudPath) {
-                return $steamCloudPath
+            $steamPath = Join-Path -Path $steamUserID.FullName -ChildPath "1716740\remote\Saves"
+            if (Test-Path $steamPath) {
+                return $steamPath
             }
         }
     }
@@ -82,10 +82,10 @@ function Get-SteamCloudPath {
 
 # Initialize variables
 $currentUser = [System.Environment]::UserName
-$defaultPath = "C:\Users\$currentUser\Documents\My Games\Starfield\Saves"
-$alternativePath = "C:\Users\$currentUser\OneDrive\Documents\My Games\Starfield\Saves"
-$steamCloudPath = Get-SteamCloudPath
-$validPath = Get-ValidPath -steamPath $steamCloudPath -defaultPath $defaultPath -alternativePath $alternativePath
+$documentsPath = "C:\Users\$currentUser\Documents\My Games\Starfield\Saves"
+$oneDrivePath = "C:\Users\$currentUser\OneDrive\Documents\My Games\Starfield\Saves"
+$steamPath = Get-SteamPath
+$validPath = Get-ValidPath -steamPath $steamPath -documentsPath $documentsPath -oneDrivePath $oneDrivePath
 
 # Initialize counter for retries
 $retryCounter = 0
@@ -127,8 +127,11 @@ function Save-Quicksave {
     } while ($true)
 }
 
+# Print startup message
+Write-Host "Starfield Quicksave Backup Script is now running..."
+
 # Main loop to monitor Starfield quicksaves and create backups
-while ($true) {
+while (-not $global:shouldExit) {
     # Check if Starfield is running by looking for any process with "Starfield" in its name
     $isRunning = Get-Process | Where-Object { $_.Name -like "*Starfield*" }
     if (-not $isRunning) {
@@ -136,28 +139,30 @@ while ($true) {
         exit
     }
 
-    # Check for quicksave files
+    # Check for Quicksave files
     $quicksaveFile = Get-ChildItem -Path $validPath -Filter "Quicksave*.sfs" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($quicksaveFile) {
         $backupFiles = Get-ChildItem -Path $validPath -Filter "Quicksave*.backup" | Sort-Object LastWriteTime
 
         # Remove oldest backup if limit is reached
         if ($backupFiles.Count -ge $quicksavesToKeep) {
-            Save-QuicksaveFile {
+            Save-Quicksave {
                 Remove-Item $backupFiles[0].FullName
-            }
+            } | Out-Null
         }
 
         $backupFileName = [System.IO.Path]::Combine($validPath, ($quicksaveFile.BaseName + ".backup"))
 
         # Create a backup if it doesn't already exist
         if (-not (Test-Path $backupFileName)) {
-            Save-QuicksaveFile {
+            Save-Quicksave {
                 Copy-Item $quicksaveFile.FullName $backupFileName
-            }
+            } | Out-Null
             Write-Host "Backup made: $backupFileName"
         }
     }
 
-    Start-Sleep -Seconds $quicksaveInteralSeconds
+    Start-Sleep -Seconds $quicksaveIntervalSeconds
 }
+
+Write-Host "Starfield Quicksave Backup Script has stopped."
