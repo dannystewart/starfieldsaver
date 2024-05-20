@@ -129,8 +129,8 @@ function Save-QuicksaveFile {
 
 # Main loop to monitor Starfield quicksaves and create backups
 while ($true) {
-    # Check if Starfield is running
-    $isRunning = Get-Process Starfield -ErrorAction SilentlyContinue
+    # Check if Starfield is running by looking for any process with "Starfield" in its name
+    $isRunning = Get-Process | Where-Object { $_.Name -like "*Starfield*" }
     if (-not $isRunning) {
         Write-Host "Starfield is no longer running. Exiting."
         exit
