@@ -1,6 +1,6 @@
 # Configurable variables
 $quicksavesToKeep = 5
-$quicksaveInteralSeconds = 10
+$quicksaveIntervalSeconds = 10
 $numberOfRetries = 3
 $secondsForRetry = 5
 
@@ -162,7 +162,7 @@ while (-not $global:shouldExit) {
         }
     }
 
-    Start-Sleep -Seconds $quicksaveInteralSeconds
+    Start-Sleep -Seconds $quicksaveIntervalSeconds
 }
 
 Write-Host "Starfield Quicksave Backup Script has stopped."
