@@ -8,6 +8,8 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import win32api  # type: ignore
+import win32con  # type: ignore
 import win32gui  # type: ignore
 import win32process  # type: ignore
 from pynput.keyboard import Controller, Key
@@ -52,7 +54,13 @@ def get_foreground_process_name() -> str:
     """Get the name of the process that is currently in focus."""
     hwnd = win32gui.GetForegroundWindow()
     _, pid = win32process.GetWindowThreadProcessId(hwnd)
-    return win32process.GetModuleFileNameEx(win32process.OpenProcess(0x1000, False, pid), 0)
+    handle = win32api.OpenProcess(
+        win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid
+    )
+    try:
+        return win32process.GetModuleFileNameEx(handle, 0)
+    finally:
+        win32api.CloseHandle(handle)
 
 
 def find_latest_quicksave(config: Config) -> tuple[str, datetime] | None:
