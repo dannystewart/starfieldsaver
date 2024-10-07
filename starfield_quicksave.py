@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import logging
 import os
 import time
 from dataclasses import asdict, dataclass
@@ -20,7 +22,7 @@ from dsutil.log import LocalLogger
 
 tz = ZoneInfo("America/New_York")
 
-logger = LocalLogger.setup_logger("starfield_quicksave")
+logger = LocalLogger.setup_logger("starfield_quicksave", level="info")
 
 
 @dataclass
@@ -109,8 +111,20 @@ def copy_quicksave(config: Config, source: str) -> None:
     )
 
 
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description="Starfield Quicksave Utility")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    return parser.parse_args()
+
+
 def main() -> None:
     """Quicksave on interval."""
+    args = parse_arguments()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled")
+
     config = load_config()
     keyboard = Controller()
     last_copy_time = None

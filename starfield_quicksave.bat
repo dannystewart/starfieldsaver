@@ -1,1 +1,2 @@
-poetry run python .\starfield_quicksave.py
+@echo off
+poetry run python .\starfield_quicksave.py %*
