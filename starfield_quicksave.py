@@ -102,6 +102,8 @@ def main() -> None:
     keyboard = Controller()
     last_copy_time = None
 
+    logger.info("Starfield quicksave utility started for %s.exe.", config.process_name)
+
     while True:
         try:
             time.sleep(config.update_interval)
@@ -134,7 +136,7 @@ def main() -> None:
                     keyboard.release(Key.f5)
 
         except KeyboardInterrupt:
-            logger.info("Quicksave utility stopped by user.")
+            logger.info("Exiting quicksave utility.")
             break
         except Exception as e:
             logger.error("An error occurred: %s", str(e))
