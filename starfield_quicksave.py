@@ -12,12 +12,16 @@ import win32con  # type: ignore
 import win32gui  # type: ignore
 import win32process  # type: ignore
 from pynput.keyboard import Controller, Key
+from watchdog.events import FileModifiedEvent, FileSystemEventHandler
+from watchdog.observers import Observer
 from zoneinfo import ZoneInfo
 
 from dsutil.files import copy_file, list_files
 from dsutil.log import LocalLogger
 
 tz = ZoneInfo("America/New_York")
+
+CONFIG_FILE_NAME = "quicksave.json"
 
 
 @dataclass
@@ -42,6 +46,18 @@ class QuicksaveConfig:
     quicksave_copy: bool = True
 
 
+class ConfigFileHandler(FileSystemEventHandler):
+    """Watchdog event handler for changes to the quicksave configuration file."""
+
+    def __init__(self, quicksave_utility: QuicksaveUtility):
+        self.quicksave_utility = quicksave_utility
+
+    def on_modified(self, event: FileModifiedEvent) -> None:
+        """Reload the configuration when the file is modified."""
+        if not event.is_directory and event.src_path.endswith(CONFIG_FILE_NAME):
+            self.quicksave_utility.reload_config()
+
+
 class QuicksaveUtility:
     """Quicksave utility for Starfield."""
 
@@ -51,12 +67,13 @@ class QuicksaveUtility:
         self.keyboard = Controller()
         self.last_copy_time: datetime | None = None
         self.last_quicksave_time: datetime | None = None
+        self.setup_config_watcher()
 
     def run(self) -> None:
         """Run the quicksave utility."""
         self.logger.info("Started quicksave utility for %s.", self.config.process_name)
-        while True:
-            try:
+        try:
+            while True:
                 time.sleep(self.config.check_interval)
 
                 if not self.is_target_process_active():
@@ -68,24 +85,25 @@ class QuicksaveUtility:
                 if self.config.quicksave_copy:
                     self.copy_quicksave_to_regular_save()
 
-            except KeyboardInterrupt:
-                self.logger.info("Exiting quicksave utility.")
-                break
-            except Exception as e:
-                self.logger.error("An error occurred: %s", str(e))
+        except KeyboardInterrupt:
+            self.logger.info("Exiting quicksave utility.")
+        except Exception as e:
+            self.logger.error("An error occurred: %s", str(e))
+        finally:
+            self.observer.stop()
+            self.observer.join()
 
     def load_config(self) -> QuicksaveConfig:
         """Load the configuration from a JSON file or create a new one."""
-        config_path = "quicksave.json"
-        if os.path.exists(config_path):
-            with open(config_path) as f:
+        if os.path.exists(CONFIG_FILE_NAME):
+            with open(CONFIG_FILE_NAME) as f:
                 config = QuicksaveConfig(**json.load(f))
         else:
             quicksave_folder = os.path.join(
                 os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
             )
             config = QuicksaveConfig(quicksave_folder)
-            with open(config_path, "w") as f:
+            with open(CONFIG_FILE_NAME, "w") as f:
                 json.dump(config.__dict__, f, indent=2)
 
         self.logger.debug("Configuration loaded with settings:")
@@ -93,6 +111,18 @@ class QuicksaveUtility:
             self.logger.debug("  %s: %s", key, value)
 
         return config
+
+    def reload_config(self) -> None:
+        """Reload the configuration from the JSON file."""
+        self.config = self.load_config()
+        self.logger.info("Reloaded config due to modification on disk.")
+
+    def setup_config_watcher(self) -> None:
+        """Watch for changes to the configuration file."""
+        self.observer = Observer()
+        handler = ConfigFileHandler(self)
+        self.observer.schedule(handler, path=".", recursive=False)
+        self.observer.start()
 
     def get_foreground_process_name(self) -> str:
         """Get the name of the process that is currently in focus."""
@@ -110,12 +140,11 @@ class QuicksaveUtility:
     def is_target_process_active(self) -> bool:
         """Check if the target process is in focus."""
         foreground_process = self.get_foreground_process_name()
-        self.logger.debug("Current foreground process: %s", foreground_process)
         if not foreground_process.lower().startswith(self.config.process_name.lower()):
-            self.logger.debug("Skipping because %s.exe was not in focus.", self.config.process_name)
+            self.logger.debug("Skipped because %s was in focus.", foreground_process)
             return False
         self.logger.debug(
-            "%s.exe is in focus, checking quicksave status.", self.config.process_name
+            "%s is in focus, checking quicksave status.", self.config.process_name
         )
         return True
 
@@ -151,10 +180,17 @@ class QuicksaveUtility:
             sort_key=lambda x: x.stat().st_mtime,
             reverse_sort=True,
         )
-        for quicksave in quicksaves:
-            if os.path.basename(quicksave).startswith("Quicksave0"):
-                return str(quicksave), datetime.fromtimestamp(os.path.getmtime(quicksave), tz=tz)
-        return None
+        return next(
+            (
+                (
+                    str(quicksave),
+                    datetime.fromtimestamp(os.path.getmtime(quicksave), tz=tz),
+                )
+                for quicksave in quicksaves
+                if os.path.basename(quicksave).startswith("Quicksave0")
+            ),
+            None,
+        )
 
     def perform_quicksave_copy(self, source: str) -> None:
         """Copy the quicksave to a new file."""
@@ -174,7 +210,7 @@ class QuicksaveUtility:
         )
         copy_file(source, destination)
         self.logger.info(
-            "Copied quicksave %s to %s.",
+            "Copied %s to %s.",
             os.path.basename(source),
             os.path.basename(destination),
         )
