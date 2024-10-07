@@ -16,7 +16,7 @@ import win32file  # type: ignore
 import win32gui  # type: ignore
 import win32process  # type: ignore
 from pynput.keyboard import Controller, Key
-from watchdog.events import FileModifiedEvent, FileSystemEventHandler
+from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from zoneinfo import ZoneInfo
 
@@ -62,6 +62,23 @@ class ConfigFileHandler(FileSystemEventHandler):
             self.quicksave_utility.reload_config()
 
 
+class SaveFileHandler(FileSystemEventHandler):
+    """Watchdog event handler for changes to the save directory."""
+
+    def __init__(self, quicksave_utility: QuicksaveUtility):
+        self.quicksave_utility = quicksave_utility
+
+    def on_moved(self, event: FileMovedEvent) -> None:
+        """Handle a file move in the save directory."""
+        self.quicksave_utility.logger.debug("File moved: %s to %s", event.src_path, event.dest_path)
+        if (
+            not event.is_directory
+            and event.dest_path.endswith(".sfs")
+            and "Quicksave0" in event.dest_path
+        ):
+            self.quicksave_utility.manual_quicksave_detected(event.dest_path)
+
+
 class QuicksaveUtility:
     """Quicksave utility for Starfield."""
 
@@ -72,10 +89,12 @@ class QuicksaveUtility:
         self.last_copy_time: datetime | None = None
         self.last_quicksave_time: datetime | None = None
         self.setup_config_watcher()
+        self.setup_save_watcher()
 
     def run(self) -> None:
         """Run the quicksave utility."""
         self.logger.info("Started quicksave utility for %s.", self.config.process_name)
+
         try:
             while True:
                 time.sleep(self.config.check_interval)
@@ -100,8 +119,10 @@ class QuicksaveUtility:
         except Exception as e:
             self.logger.error("An error occurred: %s", str(e))
         finally:
-            self.observer.stop()
-            self.observer.join()
+            self.config_observer.stop()
+            self.config_observer.join()
+            self.save_observer.stop()
+            self.save_observer.join()
 
     def load_config(self) -> QuicksaveConfig:
         """Load the configuration from a JSON file or create a new one."""
@@ -158,10 +179,17 @@ class QuicksaveUtility:
 
     def setup_config_watcher(self) -> None:
         """Watch for changes to the configuration file."""
-        self.observer = Observer()
+        self.config_observer = Observer()
         handler = ConfigFileHandler(self)
-        self.observer.schedule(handler, path=".", recursive=False)
-        self.observer.start()
+        self.config_observer.schedule(handler, path=".", recursive=False)
+        self.config_observer.start()
+
+    def setup_save_watcher(self) -> None:
+        """Watch for changes in the save directory."""
+        self.save_observer = Observer()
+        handler = SaveFileHandler(self)
+        self.save_observer.schedule(handler, path=self.config.save_directory, recursive=False)
+        self.save_observer.start()
 
     def is_target_process_running(self) -> bool:
         """Check if the target process (Starfield.exe) is running."""
@@ -236,6 +264,13 @@ class QuicksaveUtility:
             ),
             None,
         )
+
+    def manual_quicksave_detected(self, quicksave_path: str) -> None:
+        """Handle a manual quicksave event."""
+        quicksave_time = datetime.now(tz=tz)
+        if self.last_quicksave_time is None or quicksave_time > self.last_quicksave_time:
+            self.logger.info("Resetting timer due to manual quicksave: %s", os.path.basename(quicksave_path))
+            self.last_quicksave_time = quicksave_time
 
     def copy_win32_file(self, source: str, destination: str) -> None:
         """Copy a file from source to destination, preserving attributes and permissions."""
