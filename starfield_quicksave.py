@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
 import win32api  # type: ignore
@@ -99,10 +99,14 @@ def copy_quicksave(config: Config, source: str) -> None:
     new_save_id = highest_save_id + 1
     destination = os.path.join(
         config.save_directory,
-        f"Save{new_save_id}_{datetime.now(tz=tz).strftime("%Y%m%d%H%M%S")}.sfs",
+        f"Save{new_save_id}_{datetime.now(tz=tz).strftime('%Y%m%d%H%M%S')}.sfs",
     )
     copy_file(source, destination)
-    logger.info("Copied quicksave %s to %s.", source, destination)
+    logger.info(
+        "Copied quicksave %s to %s.",
+        os.path.basename(source),
+        os.path.basename(destination),
+    )
 
 
 def main() -> None:
@@ -112,7 +116,10 @@ def main() -> None:
     last_copy_time = None
     last_quicksave_time = None
 
-    logger.info("Quicksave utility started for %s.", config.process_name)
+    logger.info("Started quicksave utility for %s.", config.process_name)
+    logger.debug("Configuration settings:")
+    for key, value in asdict(config).items():
+        logger.debug("  %s: %s", key, value)
 
     while True:
         try:
