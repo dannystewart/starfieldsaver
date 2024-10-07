@@ -1,1 +1,1 @@
-poetry run python -m PyInstaller starfield_quicksave.py --clean --onefile --distpath=.
+poetry run python -m PyInstaller starfield_quicksave.spec --clean --distpath=.
