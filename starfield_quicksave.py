@@ -6,11 +6,17 @@ import json
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 import win32gui  # type: ignore
 import win32process  # type: ignore
-from dsutil.log import LocalLogger
 from pynput.keyboard import Controller, Key
+from zoneinfo import ZoneInfo
+
+from dsutil.files import copy_file, list_files
+from dsutil.log import LocalLogger
+
+tz = ZoneInfo("America/New_York")
 
 logger = LocalLogger.setup_logger("starfield_quicksave")
 
@@ -49,10 +55,52 @@ def get_foreground_process_name() -> str:
     return win32process.GetModuleFileNameEx(win32process.OpenProcess(0x1000, False, pid), 0)
 
 
+def find_latest_quicksave(config: Config) -> tuple[str, datetime] | None:
+    """Find the latest quicksave file."""
+    quicksaves = list_files(
+        config.save_directory,
+        extensions=["sfs"],
+        sort_key=lambda x: x.stat().st_mtime,
+        reverse_sort=True,
+    )
+    return next(
+        (
+            (
+                str(quicksave),
+                datetime.fromtimestamp(os.path.getmtime(quicksave), tz=tz),
+            )
+            for quicksave in quicksaves
+            if os.path.basename(quicksave).startswith("Quicksave0")
+        ),
+        None,
+    )
+
+
+def copy_quicksave(config: Config, source: str) -> None:
+    """Copy the quicksave to a new file."""
+    save_files = list_files(config.save_directory, extensions=["sfs"])
+    highest_save_id = max(
+        [
+            int(os.path.basename(f).split("_")[0][4:])
+            for f in save_files
+            if os.path.basename(f).startswith("Save")
+        ]
+        + [0]
+    )
+    new_save_id = highest_save_id + 1
+    destination = os.path.join(
+        config.save_directory,
+        f"Save{new_save_id}_{datetime.now(tz=tz).strftime("%Y%m%d%H%M%S")}.sfs",
+    )
+    copy_file(source, destination)
+    logger.info("Copied quicksave to %s.", destination)
+
+
 def main() -> None:
     """Quicksave on interval."""
     config = load_config()
     keyboard = Controller()
+    last_copy_time = None
 
     while True:
         try:
@@ -62,14 +110,34 @@ def main() -> None:
                 logger.debug("Skipping because %s was not in focus.", config.process_name)
                 continue
 
-            # Simulate F5 key press to quicksave
+            latest_quicksave = find_latest_quicksave(config)
+            if latest_quicksave is None:
+                logger.warning("No quicksave files found.")
+                continue
+
+            quicksave_file, quicksave_time = latest_quicksave
+
+            # Handle quicksave copying
+            if config.quicksave_copy and (
+                last_copy_time is None or quicksave_time > last_copy_time
+            ):
+                copy_quicksave(config, quicksave_file)
+                last_copy_time = quicksave_time
+
+            # Handle quicksave creation
             if config.quicksave_save:
-                keyboard.press(Key.f5)
-                time.sleep(0.2)
-                keyboard.release(Key.f5)
+                time_since_last_quicksave = datetime.now(tz=tz) - quicksave_time
+                if time_since_last_quicksave >= timedelta(seconds=config.quicksave_save_interval):
+                    logger.info("Creating new quicksave")
+                    keyboard.press(Key.f5)
+                    time.sleep(0.2)
+                    keyboard.release(Key.f5)
 
         except KeyboardInterrupt:
+            logger.info("Quicksave utility stopped by user.")
             break
+        except Exception as e:
+            logger.error("An error occurred: %s", str(e))
 
 
 if __name__ == "__main__":
