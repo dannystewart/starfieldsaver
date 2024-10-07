@@ -31,7 +31,7 @@ class Config:
     process_name: str = "Starfield"
     update_interval: float = 10.0
     quicksave_save: bool = True
-    quicksave_save_interval: float = 10.0
+    quicksave_save_interval: float = 240.0
     quicksave_copy: bool = True
 
 
@@ -58,7 +58,8 @@ def get_foreground_process_name() -> str:
         win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid
     )
     try:
-        return win32process.GetModuleFileNameEx(handle, 0)
+        process_path = win32process.GetModuleFileNameEx(handle, 0)
+        return os.path.basename(process_path)
     finally:
         win32api.CloseHandle(handle)
 
@@ -101,7 +102,7 @@ def copy_quicksave(config: Config, source: str) -> None:
         f"Save{new_save_id}_{datetime.now(tz=tz).strftime("%Y%m%d%H%M%S")}.sfs",
     )
     copy_file(source, destination)
-    logger.info("Copied quicksave to %s.", destination)
+    logger.info("Copied quicksave %s to %s.", source, destination)
 
 
 def main() -> None:
@@ -111,17 +112,20 @@ def main() -> None:
     last_copy_time = None
     last_quicksave_time = None
 
-    logger.info("Starfield quicksave utility started for %s.exe.", config.process_name)
+    logger.info("Quicksave utility started for %s.", config.process_name)
 
     while True:
         try:
             time.sleep(config.update_interval)
 
-            if get_foreground_process_name() != config.process_name:
-                logger.debug("Skipping because %s was not in focus.", config.process_name)
+            foreground_process = get_foreground_process_name()
+            logger.debug("Current foreground process: %s", foreground_process)
+
+            if not foreground_process.lower().startswith(config.process_name.lower()):
+                logger.debug("Skipping because %s.exe was not in focus.", config.process_name)
                 continue
 
-            logger.debug("%s is in focus, checking quicksave status.", config.process_name)
+            logger.debug("%s.exe is in focus, checking quicksave status.", config.process_name)
 
             current_time = datetime.now(tz=tz)
 
@@ -153,7 +157,7 @@ def main() -> None:
                 last_copy_time = quicksave_time
 
         except KeyboardInterrupt:
-            logger.info("Quicksave utility stopped by user.")
+            logger.info("Exiting quicksave utility.")
             break
         except Exception as e:
             logger.error("An error occurred: %s", str(e))
