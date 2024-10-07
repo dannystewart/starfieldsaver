@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import win32api  # type: ignore
@@ -95,27 +95,54 @@ class QuicksaveUtility:
 
     def load_config(self) -> QuicksaveConfig:
         """Load the configuration from a JSON file or create a new one."""
-        if os.path.exists(CONFIG_FILE_NAME):
-            with open(CONFIG_FILE_NAME) as f:
-                config = QuicksaveConfig(**json.load(f))
-        else:
-            quicksave_folder = os.path.join(
-                os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
-            )
-            config = QuicksaveConfig(quicksave_folder)
-            with open(CONFIG_FILE_NAME, "w") as f:
-                json.dump(config.__dict__, f, indent=2)
+        max_retries = 3
+        retry_delay = 0.1  # 100 ms
 
-        self.logger.debug("Configuration loaded with settings:")
-        for key, value in asdict(config).items():
-            self.logger.debug("  %s: %s", key, value)
+        for attempt in range(max_retries):
+            try:
+                if os.path.exists(CONFIG_FILE_NAME):
+                    with open(CONFIG_FILE_NAME) as f:
+                        config_data = json.load(f)
+                    config = QuicksaveConfig(**config_data)
+                else:
+                    quicksave_folder = os.path.join(
+                        os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
+                    )
+                    config = QuicksaveConfig(quicksave_folder)
+                    with open(CONFIG_FILE_NAME, "w") as f:
+                        json.dump(config.__dict__, f, indent=2)
 
-        return config
+                self.logger.debug(
+                    "Loaded config: check every %ss, %s%s",
+                    round(config.check_interval),
+                    f"save every {round(config.quicksave_interval)}s"
+                    if config.quicksave_save
+                    else "save disabled",
+                    "" if config.quicksave_copy else ", copy disabled",
+                )
+
+                return config
+
+            except json.JSONDecodeError as e:
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        "Error loading config (attempt %s): %s. Retrying...", attempt + 1, str(e)
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    self.logger.error(
+                        "Failed to load config after %s attempts: %s", max_retries, str(e)
+                    )
+                    raise
 
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""
-        self.config = self.load_config()
-        self.logger.info("Reloaded config due to modification on disk.")
+        try:
+            new_config = self.load_config()
+            self.config = new_config
+            self.logger.info("Reloaded config due to modification on disk.")
+        except Exception as e:
+            self.logger.warning("Failed to reload config: %s. Continuing with previous config.", str(e))
 
     def setup_config_watcher(self) -> None:
         """Watch for changes to the configuration file."""
@@ -143,9 +170,7 @@ class QuicksaveUtility:
         if not foreground_process.lower().startswith(self.config.process_name.lower()):
             self.logger.debug("Skipped because %s was in focus.", foreground_process)
             return False
-        self.logger.debug(
-            "%s is in focus, checking quicksave status.", self.config.process_name
-        )
+        self.logger.debug("%s is in focus, checking quicksave status.", self.config.process_name)
         return True
 
     def send_quicksave_key_to_game(self) -> None:
