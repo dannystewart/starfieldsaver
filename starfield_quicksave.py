@@ -9,7 +9,10 @@ from dataclasses import dataclass
 
 import win32gui  # type: ignore
 import win32process  # type: ignore
+from dsutil.log import LocalLogger
 from pynput.keyboard import Controller, Key
+
+logger = LocalLogger.setup_logger("starfield_quicksave")
 
 
 @dataclass
@@ -56,7 +59,7 @@ def main() -> None:
             time.sleep(config.update_interval)
 
             if get_foreground_process_name() != config.process_name:
-                print(f"Skipping this update because {config.process_name} was not in focus")
+                logger.debug("Skipping because %s was not in focus.", config.process_name)
                 continue
 
             # Simulate F5 key press to quicksave
