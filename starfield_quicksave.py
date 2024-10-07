@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import psutil
 import win32api  # type: ignore
 import win32con  # type: ignore
 import win32gui  # type: ignore
@@ -76,6 +77,12 @@ class QuicksaveUtility:
             while True:
                 time.sleep(self.config.check_interval)
 
+                if not self.is_target_process_running():
+                    self.logger.debug(
+                        "%s.exe is not running. Skipping this cycle.", self.config.process_name
+                    )
+                    continue
+
                 if not self.is_target_process_active():
                     continue
 
@@ -142,7 +149,9 @@ class QuicksaveUtility:
             self.config = new_config
             self.logger.info("Reloaded config due to modification on disk.")
         except Exception as e:
-            self.logger.warning("Failed to reload config: %s. Continuing with previous config.", str(e))
+            self.logger.warning(
+                "Failed to reload config: %s. Continuing with previous config.", str(e)
+            )
 
     def setup_config_watcher(self) -> None:
         """Watch for changes to the configuration file."""
@@ -150,6 +159,14 @@ class QuicksaveUtility:
         handler = ConfigFileHandler(self)
         self.observer.schedule(handler, path=".", recursive=False)
         self.observer.start()
+
+    def is_target_process_running(self) -> bool:
+        """Check if the target process (Starfield.exe) is running."""
+        target_process = f"{self.config.process_name}.exe"
+        return any(
+            process.info["name"].lower() == target_process.lower()
+            for process in psutil.process_iter(["name"])
+        )
 
     def get_foreground_process_name(self) -> str:
         """Get the name of the process that is currently in focus."""
