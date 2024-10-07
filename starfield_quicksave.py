@@ -31,7 +31,7 @@ class Config:
     process_name: str = "Starfield"
     update_interval: float = 10.0
     quicksave_save: bool = True
-    quicksave_save_interval: float = 120.0
+    quicksave_save_interval: float = 10.0
     quicksave_copy: bool = True
 
 
@@ -109,6 +109,7 @@ def main() -> None:
     config = load_config()
     keyboard = Controller()
     last_copy_time = None
+    last_quicksave_time = None
 
     logger.info("Starfield quicksave utility started for %s.exe.", config.process_name)
 
@@ -120,6 +121,23 @@ def main() -> None:
                 logger.debug("Skipping because %s was not in focus.", config.process_name)
                 continue
 
+            logger.debug("%s is in focus, checking quicksave status.", config.process_name)
+
+            current_time = datetime.now(tz=tz)
+
+            # Handle quicksave creation
+            if config.quicksave_save and (
+                last_quicksave_time is None
+                or (current_time - last_quicksave_time)
+                >= timedelta(seconds=config.quicksave_save_interval)
+            ):
+                logger.info("Creating new quicksave.")
+                keyboard.press(Key.f5)
+                time.sleep(0.2)
+                keyboard.release(Key.f5)
+                last_quicksave_time = current_time
+
+            # Find the latest quicksave file
             latest_quicksave = find_latest_quicksave(config)
             if latest_quicksave is None:
                 logger.warning("No quicksave files found.")
@@ -134,17 +152,8 @@ def main() -> None:
                 copy_quicksave(config, quicksave_file)
                 last_copy_time = quicksave_time
 
-            # Handle quicksave creation
-            if config.quicksave_save:
-                time_since_last_quicksave = datetime.now(tz=tz) - quicksave_time
-                if time_since_last_quicksave >= timedelta(seconds=config.quicksave_save_interval):
-                    logger.info("Creating new quicksave")
-                    keyboard.press(Key.f5)
-                    time.sleep(0.2)
-                    keyboard.release(Key.f5)
-
         except KeyboardInterrupt:
-            logger.info("Exiting quicksave utility.")
+            logger.info("Quicksave utility stopped by user.")
             break
         except Exception as e:
             logger.error("An error occurred: %s", str(e))
