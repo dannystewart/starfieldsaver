@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shutil
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -10,6 +12,7 @@ from datetime import datetime, timedelta
 import psutil
 import win32api  # type: ignore
 import win32con  # type: ignore
+import win32file  # type: ignore
 import win32gui  # type: ignore
 import win32process  # type: ignore
 from pynput.keyboard import Controller, Key
@@ -17,7 +20,7 @@ from watchdog.events import FileModifiedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from zoneinfo import ZoneInfo
 
-from dsutil.files import copy_file, list_files
+from dsutil.files import list_files
 from dsutil.log import LocalLogger
 
 tz = ZoneInfo("America/New_York")
@@ -79,7 +82,7 @@ class QuicksaveUtility:
 
                 if not self.is_target_process_running():
                     self.logger.debug(
-                        "%s.exe is not running. Skipping this cycle.", self.config.process_name
+                        "Skipped check because %s.exe is not running.", self.config.process_name
                     )
                     continue
 
@@ -185,9 +188,9 @@ class QuicksaveUtility:
         """Check if the target process is in focus."""
         foreground_process = self.get_foreground_process_name()
         if not foreground_process.lower().startswith(self.config.process_name.lower()):
-            self.logger.debug("Skipped because %s was in focus.", foreground_process)
+            self.logger.debug("Skipped check because %s was in focus.", foreground_process)
             return False
-        self.logger.debug("%s is in focus, checking quicksave status.", self.config.process_name)
+        self.logger.debug("%s is in focus, checking quicksave.", self.config.process_name)
         return True
 
     def send_quicksave_key_to_game(self) -> None:
@@ -196,7 +199,7 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Creating new quicksave.")
+            self.logger.info("Saving new quicksave.")
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
@@ -234,28 +237,55 @@ class QuicksaveUtility:
             None,
         )
 
-    def perform_quicksave_copy(self, source: str) -> None:
-        """Copy the quicksave to a new file."""
+    def copy_win32_file(self, source: str, destination: str) -> None:
+        """Copy a file from source to destination, preserving attributes and permissions."""
+        try:
+            # Copy the file with metadata
+            shutil.copy2(source, destination)
+
+            # Ensure the destination file is not read-only
+            os.chmod(destination, os.stat(source).st_mode)
+
+            # Set file attributes to match the source
+            source_attributes = win32file.GetFileAttributes(source)
+            win32file.SetFileAttributes(destination, source_attributes)
+
+            # Ensure the file is closed and not locked
+            with open(destination, "a"):
+                pass
+
+        except Exception as e:
+            msg = f"Failed to copy {source} to {destination}: {str(e)}"
+            raise OSError(msg) from e
+
+    def perform_quicksave_copy(self, source: str) -> bool:
+        """Copy the quicksave to a new file with a name matching the game's format."""
         save_files = list_files(self.config.save_directory, extensions=["sfs"])
+        source_filename = os.path.basename(source)
+        self.logger.debug("Processing new quicksave: %s", source_filename)
+
+        # Find the highest save ID
         highest_save_id = max(
             [
-                int(os.path.basename(f).split("_")[0][4:])
+                int(re.match(r"Save(\d+)_.*\.sfs", os.path.basename(f))[1])
                 for f in save_files
-                if os.path.basename(f).startswith("Save")
+                if re.match(r"Save\d+_.*\.sfs", os.path.basename(f))
             ]
             + [0]
         )
         new_save_id = highest_save_id + 1
-        destination = os.path.join(
-            self.config.save_directory,
-            f"Save{new_save_id}_{datetime.now(tz=tz).strftime('%Y%m%d%H%M%S')}.sfs",
-        )
-        copy_file(source, destination)
-        self.logger.info(
-            "Copied %s to %s.",
-            os.path.basename(source),
-            os.path.basename(destination),
-        )
+
+        # Create the new save filename by replacing only the "Quicksave0" part
+        new_filename = re.sub(r"^Quicksave0", f"Save{new_save_id}", source_filename)
+        destination = os.path.join(self.config.save_directory, new_filename)
+
+        try:
+            self.copy_win32_file(source, destination)
+            self.logger.info("Copied previous quicksave to %s.", os.path.basename(destination))
+            return True
+        except Exception as e:
+            self.logger.error("Failed to copy file: %s", str(e))
+            return False
 
 
 def parse_arguments() -> argparse.Namespace:
