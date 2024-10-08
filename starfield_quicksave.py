@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import time
+import winsound
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -102,7 +103,7 @@ class QuicksaveUtility:
 
                     if not self.is_target_process_running():
                         self.logger.debug(
-                            "Skipped check because %s.exe is not running.", self.config.process_name
+                            "Skipping check because %s.exe is not running.", self.config.process_name
                         )
                         continue
 
@@ -117,12 +118,14 @@ class QuicksaveUtility:
 
                 except Exception as e:
                     self.logger.error("An error occurred during the main loop: %s", str(e))
+                    self.play_error_sound()
                     time.sleep(2)  # Prevent rapid error loop
 
         except KeyboardInterrupt:
             self.logger.info("Exiting quicksave utility.")
         except Exception as e:
             self.logger.error("An error occurred: %s", str(e))
+            self.play_error_sound()
         finally:
             self.config_observer.stop()
             self.config_observer.join()
@@ -221,7 +224,7 @@ class QuicksaveUtility:
         """Check if the target process is in focus."""
         foreground_process = self.get_foreground_process_name()
         if not foreground_process.lower().startswith(self.config.process_name.lower()):
-            self.logger.debug("Skipped check because %s was in focus.", foreground_process)
+            self.logger.debug("Skipping check because %s is in focus.", foreground_process)
             return False
         return True
 
@@ -231,7 +234,7 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Interval reached. Saving new quicksave.")
+            self.logger.info("Scheduled interval time reached; quicksaving.")
             self.is_auto_saving = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
@@ -240,24 +243,66 @@ class QuicksaveUtility:
 
     def copy_quicksave_to_regular_save(self) -> None:
         """Copy the latest quicksave to a regular save if newer than the last copied quicksave."""
-        try:
-            latest_quicksave = self.find_latest_quicksave_file()
-            if latest_quicksave is None:
-                self.logger.warning("No quicksave files found.")
-                return
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                if result := self._attempt_quicksave_copy():
+                    return
+                if result is False:
+                    self.logger.debug("No new quicksave to copy.")
+                    return
 
-            quicksave_file, quicksave_time = latest_quicksave
-            if not os.path.exists(quicksave_file):
-                self.logger.warning("Quicksave file no longer exists: %s", quicksave_file)
-                return
+            # If result is None, it means we should retry
+            except Exception as e:
+                self.logger.error(
+                    "Error during copy operation (attempt %d): %s", attempt + 1, str(e)
+                )
 
-            if self.last_copy_time is None or quicksave_time > self.last_copy_time:
-                self.perform_quicksave_copy(quicksave_file)
+            if attempt < max_attempts - 1:
+                self.logger.info("Retrying copy operation...")
+                time.sleep(1)  # Wait a second before retrying
+            else:
+                self.play_error_sound()  # Play error sound after all attempts fail
+                self.logger.error("Failed to copy quicksave after %d attempts", max_attempts)
+
+    def _attempt_quicksave_copy(self) -> bool | None:
+        """
+        Attempt to copy the latest quicksave file. Returns True if copy was successful, False if no
+        copy was needed, None if should retry.
+        """
+        latest_quicksave = self.find_latest_quicksave_file()
+        if latest_quicksave is None:
+            self.logger.warning("No quicksave files found.")
+            return None  # Should retry
+
+        quicksave_file, quicksave_time = latest_quicksave
+        if not os.path.exists(quicksave_file):
+            self.logger.warning("Quicksave file no longer exists: %s", quicksave_file)
+            return None  # Should retry
+
+        if self._should_copy_quicksave(quicksave_time):
+            if self.perform_quicksave_copy(quicksave_file):
                 self.last_copy_time = quicksave_time
-        except FileNotFoundError as e:
-            self.logger.warning("File not found during copy operation: %s", str(e))
-        except Exception as e:
-            self.logger.error("Error during copy operation: %s", str(e))
+                return True  # Copied successfully
+            return None  # Should retry
+
+        return False  # No copy needed
+
+    def _should_copy_quicksave(self, quicksave_time: datetime) -> bool:
+        """Determine if the quicksave should be copied based on its timestamp."""
+        return self.last_copy_time is None or quicksave_time > self.last_copy_time
+
+    def _get_new_save_id(self, save_files: list[str]) -> int:
+        """Get the next available save ID."""
+        highest_save_id = max(
+            [
+                int(re.match(r"Save(\d+)_.*\.sfs", os.path.basename(f))[1])
+                for f in save_files
+                if re.match(r"Save\d+_.*\.sfs", os.path.basename(f))
+            ]
+            + [0]
+        )
+        return highest_save_id + 1
 
     def find_latest_quicksave_file(self) -> tuple[str, datetime] | None:
         """Find the latest quicksave file."""
@@ -319,28 +364,25 @@ class QuicksaveUtility:
         save_files = list_files(self.config.save_directory, extensions=["sfs"])
         source_filename = os.path.basename(source)
 
-        # Find the highest save ID
-        highest_save_id = max(
-            [
-                int(re.match(r"Save(\d+)_.*\.sfs", os.path.basename(f))[1])
-                for f in save_files
-                if re.match(r"Save\d+_.*\.sfs", os.path.basename(f))
-            ]
-            + [0]
-        )
-        new_save_id = highest_save_id + 1
-
-        # Create the new save filename by replacing only the "Quicksave0" part
+        new_save_id = self._get_new_save_id(save_files)
         new_filename = re.sub(r"^Quicksave0", f"Save{new_save_id}", source_filename)
         destination = os.path.join(self.config.save_directory, new_filename)
 
         try:
             self.copy_win32_file(source, destination)
-            self.logger.debug("Copied previous quicksave to %s.", os.path.basename(destination))
+            self.logger.info("Copied previous quicksave to %s.", os.path.basename(destination))
             return True
         except Exception as e:
             self.logger.error("Failed to copy file: %s", str(e))
             return False
+
+    def play_error_sound(self) -> None:
+        """Play an error sound to alert the user."""
+        for _ in range(2):  # Play the sequence twice
+            winsound.Beep(500, 200)  # 500 Hz for 200 ms
+            time.sleep(0.1)  # Short pause
+            winsound.Beep(300, 300)  # 300 Hz for 300 ms
+            time.sleep(0.2)  # Slightly longer pause
 
 
 def parse_arguments() -> argparse.Namespace:
