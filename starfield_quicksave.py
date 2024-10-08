@@ -70,7 +70,6 @@ class SaveFileHandler(FileSystemEventHandler):
 
     def on_moved(self, event: FileMovedEvent) -> None:
         """Handle a file move in the save directory."""
-        self.quicksave_utility.logger.debug("File moved: %s to %s", event.src_path, event.dest_path)
         if (
             not event.is_directory
             and event.dest_path.endswith(".sfs")
@@ -88,31 +87,37 @@ class QuicksaveUtility:
         self.keyboard = Controller()
         self.last_copy_time: datetime | None = None
         self.last_quicksave_time: datetime | None = None
+        self.is_auto_saving = False
         self.setup_config_watcher()
         self.setup_save_watcher()
 
     def run(self) -> None:
         """Run the quicksave utility."""
-        self.logger.info("Started quicksave utility for %s.", self.config.process_name)
+        self.logger.info("Started quicksave utility for %s.exe.", self.config.process_name)
 
         try:
             while True:
-                time.sleep(self.config.check_interval)
+                try:
+                    time.sleep(self.config.check_interval)
 
-                if not self.is_target_process_running():
-                    self.logger.debug(
-                        "Skipped check because %s.exe is not running.", self.config.process_name
-                    )
-                    continue
+                    if not self.is_target_process_running():
+                        self.logger.debug(
+                            "Skipped check because %s.exe is not running.", self.config.process_name
+                        )
+                        continue
 
-                if not self.is_target_process_active():
-                    continue
+                    if not self.is_target_process_active():
+                        continue
 
-                if self.config.quicksave_save:
-                    self.send_quicksave_key_to_game()
+                    if self.config.quicksave_save:
+                        self.send_quicksave_key_to_game()
 
-                if self.config.quicksave_copy:
-                    self.copy_quicksave_to_regular_save()
+                    if self.config.quicksave_copy:
+                        self.copy_quicksave_to_regular_save()
+
+                except Exception as e:
+                    self.logger.error("An error occurred during the main loop: %s", str(e))
+                    time.sleep(2)  # Prevent rapid error loop
 
         except KeyboardInterrupt:
             self.logger.info("Exiting quicksave utility.")
@@ -218,7 +223,6 @@ class QuicksaveUtility:
         if not foreground_process.lower().startswith(self.config.process_name.lower()):
             self.logger.debug("Skipped check because %s was in focus.", foreground_process)
             return False
-        self.logger.debug("%s is in focus, checking quicksave.", self.config.process_name)
         return True
 
     def send_quicksave_key_to_game(self) -> None:
@@ -227,7 +231,8 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Saving new quicksave.")
+            self.logger.info("Interval reached. Saving new quicksave.")
+            self.is_auto_saving = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
@@ -235,41 +240,57 @@ class QuicksaveUtility:
 
     def copy_quicksave_to_regular_save(self) -> None:
         """Copy the latest quicksave to a regular save if newer than the last copied quicksave."""
-        latest_quicksave = self.find_latest_quicksave_file()
-        if latest_quicksave is None:
-            self.logger.warning("No quicksave files found.")
-            return
+        try:
+            latest_quicksave = self.find_latest_quicksave_file()
+            if latest_quicksave is None:
+                self.logger.warning("No quicksave files found.")
+                return
 
-        quicksave_file, quicksave_time = latest_quicksave
-        if self.last_copy_time is None or quicksave_time > self.last_copy_time:
-            self.perform_quicksave_copy(quicksave_file)
-            self.last_copy_time = quicksave_time
+            quicksave_file, quicksave_time = latest_quicksave
+            if not os.path.exists(quicksave_file):
+                self.logger.warning("Quicksave file no longer exists: %s", quicksave_file)
+                return
+
+            if self.last_copy_time is None or quicksave_time > self.last_copy_time:
+                self.perform_quicksave_copy(quicksave_file)
+                self.last_copy_time = quicksave_time
+        except FileNotFoundError as e:
+            self.logger.warning("File not found during copy operation: %s", str(e))
+        except Exception as e:
+            self.logger.error("Error during copy operation: %s", str(e))
 
     def find_latest_quicksave_file(self) -> tuple[str, datetime] | None:
         """Find the latest quicksave file."""
-        quicksaves = list_files(
-            self.config.save_directory,
-            extensions=["sfs"],
-            sort_key=lambda x: x.stat().st_mtime,
-            reverse_sort=True,
-        )
-        return next(
-            (
-                (
-                    str(quicksave),
-                    datetime.fromtimestamp(os.path.getmtime(quicksave), tz=tz),
-                )
-                for quicksave in quicksaves
-                if os.path.basename(quicksave).startswith("Quicksave0")
-            ),
-            None,
-        )
+        try:
+            quicksaves = list_files(
+                self.config.save_directory,
+                extensions=["sfs"],
+                sort_key=lambda x: x.stat().st_mtime,
+                reverse_sort=True,
+            )
+            for quicksave in quicksaves:
+                if os.path.basename(quicksave).startswith("Quicksave0"):
+                    quicksave_path = str(quicksave)
+                    if os.path.exists(quicksave_path):
+                        return quicksave_path, datetime.fromtimestamp(
+                            os.path.getmtime(quicksave_path), tz=tz
+                        )
+            return None
+        except Exception as e:
+            self.logger.error("Error finding latest quicksave: %s", str(e))
+            return None
 
     def manual_quicksave_detected(self, quicksave_path: str) -> None:
         """Handle a manual quicksave event."""
+        if self.is_auto_saving:
+            self.is_auto_saving = False
+            return
+
         quicksave_time = datetime.now(tz=tz)
         if self.last_quicksave_time is None or quicksave_time > self.last_quicksave_time:
-            self.logger.info("Resetting timer due to manual quicksave: %s", os.path.basename(quicksave_path))
+            self.logger.info(
+                "Resetting timer due to manual quicksave: %s", os.path.basename(quicksave_path)
+            )
             self.last_quicksave_time = quicksave_time
 
     def copy_win32_file(self, source: str, destination: str) -> None:
@@ -297,7 +318,6 @@ class QuicksaveUtility:
         """Copy the quicksave to a new file with a name matching the game's format."""
         save_files = list_files(self.config.save_directory, extensions=["sfs"])
         source_filename = os.path.basename(source)
-        self.logger.debug("Processing new quicksave: %s", source_filename)
 
         # Find the highest save ID
         highest_save_id = max(
@@ -316,7 +336,7 @@ class QuicksaveUtility:
 
         try:
             self.copy_win32_file(source, destination)
-            self.logger.info("Copied previous quicksave to %s.", os.path.basename(destination))
+            self.logger.debug("Copied previous quicksave to %s.", os.path.basename(destination))
             return True
         except Exception as e:
             self.logger.error("Failed to copy file: %s", str(e))
