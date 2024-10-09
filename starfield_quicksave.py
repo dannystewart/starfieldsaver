@@ -337,6 +337,7 @@ class QuicksaveUtility:
                 "Resetting timer due to manual quicksave: %s", os.path.basename(quicksave_path)
             )
             self.last_quicksave_time = quicksave_time
+            self.play_info_sound()
 
     def copy_win32_file(self, source: str, destination: str) -> None:
         """Copy a file from source to destination, preserving attributes and permissions."""
@@ -376,13 +377,22 @@ class QuicksaveUtility:
             self.logger.error("Failed to copy file: %s", str(e))
             return False
 
+    def play_info_sound(self) -> None:
+        """Play an info sound to update the user."""
+        self.play_beep(400, 100)
+        self.play_beep(800, 100)
+
     def play_error_sound(self) -> None:
         """Play an error sound to alert the user."""
-        for _ in range(2):  # Play the sequence twice
-            winsound.Beep(500, 200)  # 500 Hz for 200 ms
-            time.sleep(0.1)  # Short pause
-            winsound.Beep(300, 300)  # 300 Hz for 300 ms
-            time.sleep(0.2)  # Slightly longer pause
+        for _ in range(2):
+            self.play_beep(500, 200, 0.1)
+            self.play_beep(300, 300, 0.2)
+
+    @staticmethod
+    def play_beep(freq: int, duration: int, pause: float = 0.0) -> None:
+        """Play a beep with a specific frequency, duration, and pause."""
+        winsound.Beep(freq, duration)
+        time.sleep(pause)
 
 
 def parse_arguments() -> argparse.Namespace:
