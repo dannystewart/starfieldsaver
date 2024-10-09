@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import re
@@ -55,6 +54,7 @@ class QuicksaveConfig:
         play_error_sound: Whether to play error sounds
         info_volume: Volume for info sounds (0.0 to 1.0)
         error_volume: Volume for error sounds (0.0 to 1.0)
+        debug_log: Whether to enable debug logging
     """
 
     save_directory: str
@@ -67,6 +67,7 @@ class QuicksaveConfig:
     play_error_sound: bool = True
     info_volume: float = 0.1
     error_volume: float = 0.5
+    debug_log: bool = False
     extra_config: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -108,8 +109,8 @@ class SaveFileHandler(FileSystemEventHandler):
 class SoundPlayer:
     """Class for handling playback of notification sounds."""
 
-    def __init__(self):
-        self.logger = LocalLogger.setup_logger("sound_player", level="info")
+    def __init__(self, debug: bool = False):
+        self.logger = LocalLogger.setup_logger("sound_player", level="debug" if debug else "info")
         self.setup_sound_system()
 
     def __del__(self):
@@ -171,9 +172,11 @@ class SoundPlayer:
 class QuicksaveUtility:
     """Quicksave utility for Starfield."""
 
-    def __init__(self, debug: bool = False):
-        self.logger = LocalLogger.setup_logger("quicksave", level="debug" if debug else "info")
+    def __init__(self):
         self.config = self.load_config()
+        self.logger = LocalLogger.setup_logger(
+            "quicksave", level="debug" if self.config.debug_log else "info"
+        )
         self.keyboard = Controller()
         self.last_copy_time: datetime | None = None
         self.last_quicksave_time: datetime | None = None
@@ -507,14 +510,5 @@ class QuicksaveUtility:
             return False
 
 
-def parse_arguments() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description="Starfield Quicksave Utility")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = parse_arguments()
-    quicksave_utility = QuicksaveUtility(args.debug)
-    quicksave_utility.run()
+    QuicksaveUtility().run()
