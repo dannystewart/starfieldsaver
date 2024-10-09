@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -76,6 +77,67 @@ class QuicksaveConfig:
         }
         for k in self.extra_config:
             delattr(self, k)
+
+
+class ConfigLoader:
+    """Class for loading and saving the quicksave configuration."""
+
+    CONFIG_FILE_NAME = "quicksave.json"
+    MAX_RETRIES = 3
+    RETRY_DELAY = 0.1
+
+    @classmethod
+    def load(cls) -> QuicksaveConfig:
+        """Load the configuration from the JSON file or create a new one."""
+        for attempt in range(cls.MAX_RETRIES):
+            try:
+                if not os.path.exists(cls.CONFIG_FILE_NAME):
+                    return cls._create_default_config()
+                with open(cls.CONFIG_FILE_NAME) as f:
+                    config_data = json.load(f)
+                return cls._process_config(config_data)
+            except json.JSONDecodeError:
+                if attempt < cls.MAX_RETRIES - 1:
+                    time.sleep(cls.RETRY_DELAY)
+                else:
+                    raise
+
+    @classmethod
+    def _process_config(cls, config_data: dict[str, Any]) -> QuicksaveConfig:
+        known_attrs = {
+            k: config_data.pop(k) for k in QuicksaveConfig.__annotations__ if k in config_data
+        }
+        config = QuicksaveConfig(**known_attrs)
+        config.extra_config = config_data
+
+        # Check for missing attributes and add them with default values
+        default_config = QuicksaveConfig(save_directory=config.save_directory)
+        updated = False
+        for attr, value in default_config.__dict__.items():
+            if attr not in known_attrs and attr != "extra_config":
+                setattr(config, attr, value)
+                updated = True
+
+        if updated:
+            cls._save_config(config)
+
+        return config
+
+    @classmethod
+    def _create_default_config(cls) -> QuicksaveConfig:
+        quicksave_folder = os.path.join(
+            os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
+        )
+        config = QuicksaveConfig(quicksave_folder)
+        cls._save_config(config)
+        return config
+
+    @classmethod
+    def _save_config(cls, config: QuicksaveConfig) -> None:
+        config_dict = {k: v for k, v in config.__dict__.items() if k != "extra_config"}
+        config_dict |= config.extra_config
+        with open(cls.CONFIG_FILE_NAME, "w") as f:
+            json.dump(config_dict, f, indent=2)
 
 
 class ConfigFileHandler(FileSystemEventHandler):
@@ -173,7 +235,7 @@ class QuicksaveUtility:
     """Quicksave utility for Starfield."""
 
     def __init__(self):
-        self.config = self.load_config()
+        self.config = ConfigLoader.load()
         self.logger = LocalLogger.setup_logger(
             "quicksave", level="debug" if self.config.debug_log else "info"
         )
@@ -184,6 +246,34 @@ class QuicksaveUtility:
         self.setup_config_watcher()
         self.setup_save_watcher()
         self.sound = SoundPlayer()
+
+        self._log_config()
+
+    def _setup_logger(self) -> logging.Logger:
+        return LocalLogger.setup_logger(
+            "quicksave", level="debug" if self.config.debug_log else "info"
+        )
+
+    def _update_logger_level(self) -> None:
+        new_level = logging.DEBUG if self.config.debug_log else logging.INFO
+        self.logger.setLevel(new_level)
+        for handler in self.logger.handlers:
+            handler.setLevel(new_level)
+        self.logger.info(
+            "Logger level updated to %s.", "debug" if self.config.debug_log else "info"
+        )
+
+    def _log_config(self) -> None:
+        self.logger.debug(
+            "Loaded config: check every %ss, %s%s, info sound %s, error sound %s",
+            round(self.config.check_interval),
+            f"save every {round(self.config.quicksave_interval)}s"
+            if self.config.quicksave_save
+            else "save disabled",
+            "" if self.config.quicksave_copy else ", copy disabled",
+            "enabled" if self.config.play_info_sound else "disabled",
+            "enabled" if self.config.play_error_sound else "disabled",
+        )
 
     def run(self) -> None:
         """Run the quicksave utility."""
@@ -226,96 +316,19 @@ class QuicksaveUtility:
             self.save_observer.stop()
             self.save_observer.join()
 
-    def load_config(self) -> QuicksaveConfig:
-        """Load the configuration from a JSON file or create a new one."""
-        max_retries = 3
-        retry_delay = 0.1  # 100 ms
-
-        for attempt in range(max_retries):
-            try:
-                if os.path.exists(CONFIG_FILE_NAME):
-                    with open(CONFIG_FILE_NAME) as f:
-                        config_data = json.load(f)
-
-                    # Extract known attributes
-                    known_attrs = {
-                        k: config_data.pop(k)
-                        for k in QuicksaveConfig.__annotations__
-                        if k in config_data
-                    }
-
-                    # Create config object with default values
-                    config = QuicksaveConfig(**known_attrs)
-
-                    # Store unknown attributes
-                    config.extra_config = config_data
-
-                    # Log warnings for unknown attributes
-                    for k, v in config.extra_config.items():
-                        self.logger.warning("Unknown configuration option: %s = %s", k, v)
-
-                    # Check for missing attributes and add them with default values
-                    default_config = QuicksaveConfig(save_directory=config.save_directory)
-                    updated = False
-                    for attr, value in default_config.__dict__.items():
-                        if attr not in known_attrs and attr != "extra_config":
-                            setattr(config, attr, value)
-                            self.logger.info(
-                                "Added missing configuration option: %s = %s", attr, value
-                            )
-                            updated = True
-
-                    if updated:  # If we added any missing attributes, update the config file
-                        self._save_config(config)
-                else:
-                    quicksave_folder = os.path.join(
-                        os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
-                    )
-                    config = QuicksaveConfig(quicksave_folder)
-                    self._save_config(config)
-
-                self.logger.debug(
-                    "Loaded config: check every %ss, %s%s, info sound %s, error sound %s",
-                    round(config.check_interval),
-                    f"save every {round(config.quicksave_interval)}s"
-                    if config.quicksave_save
-                    else "save disabled",
-                    "" if config.quicksave_copy else ", copy disabled",
-                    "enabled" if config.play_info_sound else "disabled",
-                    "enabled" if config.play_error_sound else "disabled",
-                )
-
-                return config
-
-            except json.JSONDecodeError as e:
-                if attempt < max_retries - 1:
-                    self.logger.warning(
-                        "Error loading config (attempt %s): %s. Retrying...", attempt + 1, str(e)
-                    )
-                    time.sleep(retry_delay)
-                else:
-                    self.logger.error(
-                        "Failed to load config after %s attempts: %s", max_retries, str(e)
-                    )
-                    raise
-
-    def _save_config(self, config: QuicksaveConfig) -> None:
-        """Save the configuration to a JSON file."""
-        config_dict = {k: v for k, v in config.__dict__.items() if k != "extra_config"}
-        config_dict.update(config.extra_config)
-        with open(CONFIG_FILE_NAME, "w") as f:
-            json.dump(config_dict, f, indent=2)
-        self.logger.debug("Saved configuration to %s", CONFIG_FILE_NAME)
-
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""
         try:
-            new_config = self.load_config()
+            new_config = ConfigLoader.load()
+            old_debug = self.config.debug_log
             self.config = new_config
+            if old_debug != self.config.debug_log:
+                self._update_logger_level()
+            self._log_config()
             self.logger.info("Reloaded config due to modification on disk.")
         except Exception as e:
             self.logger.warning(
-                "Failed to reload config: %s. Continuing with previous config.", str(e)
+                "Failed to reload config after multiple attempts: %s. Continuing with previous config.", str(e)
             )
 
     def setup_config_watcher(self) -> None:
