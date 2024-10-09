@@ -7,8 +7,9 @@ import re
 import shutil
 import time
 import winsound
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Any
 
 import psutil
 import win32api  # type: ignore
@@ -50,6 +51,10 @@ class QuicksaveConfig:
         quicksave_save: Whether to create quicksaves
         quicksave_interval: Time between quicksaves (in seconds)
         quicksave_copy: Whether to copy quicksaves to regular saves
+        play_info_sound: Whether to play info sounds
+        play_error_sound: Whether to play error sounds
+        info_volume: Volume for info sounds (0.0 to 1.0)
+        error_volume: Volume for error sounds (0.0 to 1.0)
     """
 
     save_directory: str
@@ -58,6 +63,18 @@ class QuicksaveConfig:
     quicksave_save: bool = True
     quicksave_interval: float = 240.0
     quicksave_copy: bool = True
+    play_info_sound: bool = True
+    play_error_sound: bool = True
+    info_volume: float = 0.1
+    error_volume: float = 0.5
+    extra_config: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.extra_config = {
+            k: v for k, v in self.__dict__.items() if k not in self.__annotations__
+        }
+        for k in self.extra_config:
+            delattr(self, k)
 
 
 class ConfigFileHandler(FileSystemEventHandler):
@@ -216,7 +233,23 @@ class QuicksaveUtility:
                 if os.path.exists(CONFIG_FILE_NAME):
                     with open(CONFIG_FILE_NAME) as f:
                         config_data = json.load(f)
-                    config = QuicksaveConfig(**config_data)
+
+                    # Extract known attributes
+                    known_attrs = {
+                        k: config_data.pop(k)
+                        for k in QuicksaveConfig.__annotations__
+                        if k in config_data
+                    }
+
+                    # Create config object
+                    config = QuicksaveConfig(**known_attrs)
+
+                    # Store unknown attributes
+                    config.extra_config = config_data
+
+                    # Log warnings for unknown attributes
+                    for k, v in config.extra_config.items():
+                        self.logger.warning("Unknown configuration option: %s = %s", k, v)
                 else:
                     quicksave_folder = os.path.join(
                         os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
@@ -226,12 +259,14 @@ class QuicksaveUtility:
                         json.dump(config.__dict__, f, indent=2)
 
                 self.logger.debug(
-                    "Loaded config: check every %ss, %s%s",
+                    "Loaded config: check every %ss, %s%s, info sound %s, error sound %s",
                     round(config.check_interval),
                     f"save every {round(config.quicksave_interval)}s"
                     if config.quicksave_save
                     else "save disabled",
                     "" if config.quicksave_copy else ", copy disabled",
+                    "enabled" if config.play_info_sound else "disabled",
+                    "enabled" if config.play_error_sound else "disabled",
                 )
 
                 return config
