@@ -241,7 +241,7 @@ class QuicksaveUtility:
                         if k in config_data
                     }
 
-                    # Create config object
+                    # Create config object with default values
                     config = QuicksaveConfig(**known_attrs)
 
                     # Store unknown attributes
@@ -250,13 +250,26 @@ class QuicksaveUtility:
                     # Log warnings for unknown attributes
                     for k, v in config.extra_config.items():
                         self.logger.warning("Unknown configuration option: %s = %s", k, v)
+
+                    # Check for missing attributes and add them with default values
+                    default_config = QuicksaveConfig(save_directory=config.save_directory)
+                    updated = False
+                    for attr, value in default_config.__dict__.items():
+                        if attr not in known_attrs and attr != "extra_config":
+                            setattr(config, attr, value)
+                            self.logger.info(
+                                "Added missing configuration option: %s = %s", attr, value
+                            )
+                            updated = True
+
+                    if updated:  # If we added any missing attributes, update the config file
+                        self._save_config(config)
                 else:
                     quicksave_folder = os.path.join(
                         os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
                     )
                     config = QuicksaveConfig(quicksave_folder)
-                    with open(CONFIG_FILE_NAME, "w") as f:
-                        json.dump(config.__dict__, f, indent=2)
+                    self._save_config(config)
 
                 self.logger.debug(
                     "Loaded config: check every %ss, %s%s, info sound %s, error sound %s",
@@ -282,6 +295,14 @@ class QuicksaveUtility:
                         "Failed to load config after %s attempts: %s", max_retries, str(e)
                     )
                     raise
+
+    def _save_config(self, config: QuicksaveConfig) -> None:
+        """Save the configuration to a JSON file."""
+        config_dict = {k: v for k, v in config.__dict__.items() if k != "extra_config"}
+        config_dict.update(config.extra_config)
+        with open(CONFIG_FILE_NAME, "w") as f:
+            json.dump(config_dict, f, indent=2)
+        self.logger.debug("Saved configuration to %s", CONFIG_FILE_NAME)
 
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""
@@ -357,8 +378,7 @@ class QuicksaveUtility:
             try:
                 if result := self._attempt_quicksave_copy():
                     return
-                if result is False:
-                    self.logger.debug("No new quicksave to copy.")
+                if result is False:  # No new quicksave to copy
                     return
 
             # If result is None, it means we should retry
