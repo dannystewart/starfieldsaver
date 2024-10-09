@@ -103,6 +103,30 @@ class ConfigLoader:
                     raise
 
     @classmethod
+    def reload(cls, current_config: QuicksaveConfig, logger: logging.Logger) -> QuicksaveConfig:
+        """Reload the configuration from the JSON file."""
+        try:
+            new_config = cls.load()
+            if current_config.debug_log != new_config.debug_log:
+                cls._update_logger_level(logger, new_config.debug_log)
+            logger.info("Reloaded config due to modification on disk.")
+            return new_config
+        except Exception as e:
+            logger.warning(
+                "Failed to reload config after multiple attempts: %s. Continuing with previous config.",
+                str(e),
+            )
+            return current_config
+
+    @staticmethod
+    def _update_logger_level(logger: logging.Logger, debug_log: bool) -> None:
+        new_level = logging.DEBUG if debug_log else logging.INFO
+        logger.setLevel(new_level)
+        for handler in logger.handlers:
+            handler.setLevel(new_level)
+        logger.info("Logger level updated to %s.", "debug" if debug_log else "info")
+
+    @classmethod
     def _process_config(cls, config_data: dict[str, Any]) -> QuicksaveConfig:
         known_attrs = {
             k: config_data.pop(k) for k in QuicksaveConfig.__annotations__ if k in config_data
@@ -171,8 +195,8 @@ class SaveFileHandler(FileSystemEventHandler):
 class SoundPlayer:
     """Class for handling playback of notification sounds."""
 
-    def __init__(self, debug: bool = False):
-        self.logger = LocalLogger.setup_logger("sound_player", level="debug" if debug else "info")
+    def __init__(self, logger: logging.Logger):
+        self.logger = logger
         self.setup_sound_system()
 
     def __del__(self):
@@ -236,17 +260,20 @@ class QuicksaveUtility:
 
     def __init__(self):
         self.config = ConfigLoader.load()
-        self.logger = LocalLogger.setup_logger(
-            "quicksave", level="debug" if self.config.debug_log else "info"
-        )
+        self.logger = self._setup_logger()
+
+        # Initialize keyboard and sound player
         self.keyboard = Controller()
+        self.sound = SoundPlayer(self.logger)
+
+        # Initialize last save times and flags
         self.last_copy_time: datetime | None = None
         self.last_quicksave_time: datetime | None = None
-        self.is_auto_saving = False
-        self.setup_config_watcher()
-        self.setup_save_watcher()
-        self.sound = SoundPlayer()
+        self.save_in_progress = False
 
+        # Set up file watchers and log configuration
+        self._setup_config_watcher()
+        self._setup_save_watcher()
         self._log_config()
 
     def _setup_logger(self) -> logging.Logger:
@@ -254,14 +281,17 @@ class QuicksaveUtility:
             "quicksave", level="debug" if self.config.debug_log else "info"
         )
 
-    def _update_logger_level(self) -> None:
-        new_level = logging.DEBUG if self.config.debug_log else logging.INFO
-        self.logger.setLevel(new_level)
-        for handler in self.logger.handlers:
-            handler.setLevel(new_level)
-        self.logger.info(
-            "Logger level updated to %s.", "debug" if self.config.debug_log else "info"
-        )
+    def _setup_config_watcher(self) -> None:
+        self.config_observer = Observer()
+        handler = ConfigFileHandler(self)
+        self.config_observer.schedule(handler, path=".", recursive=False)
+        self.config_observer.start()
+
+    def _setup_save_watcher(self) -> None:
+        self.save_observer = Observer()
+        handler = SaveFileHandler(self)
+        self.save_observer.schedule(handler, path=self.config.save_directory, recursive=False)
+        self.save_observer.start()
 
     def _log_config(self) -> None:
         self.logger.debug(
@@ -274,6 +304,11 @@ class QuicksaveUtility:
             "enabled" if self.config.play_info_sound else "disabled",
             "enabled" if self.config.play_error_sound else "disabled",
         )
+
+    def reload_config(self) -> None:
+        """Reload the configuration from the JSON file."""
+        self.config = ConfigLoader.reload(self.config, self.logger)
+        self._log_config()
 
     def run(self) -> None:
         """Run the quicksave utility."""
@@ -316,35 +351,6 @@ class QuicksaveUtility:
             self.save_observer.stop()
             self.save_observer.join()
 
-    def reload_config(self) -> None:
-        """Reload the configuration from the JSON file."""
-        try:
-            new_config = ConfigLoader.load()
-            old_debug = self.config.debug_log
-            self.config = new_config
-            if old_debug != self.config.debug_log:
-                self._update_logger_level()
-            self._log_config()
-            self.logger.info("Reloaded config due to modification on disk.")
-        except Exception as e:
-            self.logger.warning(
-                "Failed to reload config after multiple attempts: %s. Continuing with previous config.", str(e)
-            )
-
-    def setup_config_watcher(self) -> None:
-        """Watch for changes to the configuration file."""
-        self.config_observer = Observer()
-        handler = ConfigFileHandler(self)
-        self.config_observer.schedule(handler, path=".", recursive=False)
-        self.config_observer.start()
-
-    def setup_save_watcher(self) -> None:
-        """Watch for changes in the save directory."""
-        self.save_observer = Observer()
-        handler = SaveFileHandler(self)
-        self.save_observer.schedule(handler, path=self.config.save_directory, recursive=False)
-        self.save_observer.start()
-
     def is_target_process_running(self) -> bool:
         """Check if the target process (Starfield.exe) is running."""
         target_process = f"{self.config.process_name}.exe"
@@ -381,7 +387,7 @@ class QuicksaveUtility:
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
             self.logger.info("Scheduled interval time reached; quicksaving.")
-            self.is_auto_saving = True
+            self.save_in_progress = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
@@ -472,8 +478,8 @@ class QuicksaveUtility:
 
     def manual_quicksave_detected(self, quicksave_path: str) -> None:
         """Handle a manual quicksave event."""
-        if self.is_auto_saving:
-            self.is_auto_saving = False
+        if self.save_in_progress:
+            self.save_in_progress = False
             return
 
         quicksave_time = datetime.now(tz=tz)
