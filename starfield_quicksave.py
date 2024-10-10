@@ -31,17 +31,13 @@ class QuicksaveUtility:
     def __init__(self):
         self.config = ConfigLoader.load()
         self.logger = self._setup_logger()
-
-        # Initialize keyboard and sound player
         self.keyboard = Controller()
         self.sound = SoundPlayer(self.logger)
 
-        # Initialize last save times and flags
         self.last_quicksave_time: datetime | None = None
         self.last_copied_save_name: str | None = None
         self.save_in_progress = False
 
-        # Set up file watchers and log configuration
         self._setup_config_watcher()
         self._setup_save_watcher()
         self._log_config()
@@ -51,28 +47,7 @@ class QuicksaveUtility:
         self.logger.info("Started quicksave utility for %s.exe.", self.config.process_name)
 
         try:
-            while True:
-                try:
-                    time.sleep(self.config.check_interval)
-
-                    if not self.is_target_process_running():
-                        self.logger.debug(
-                            "Skipping check because %s.exe is not running.",
-                            self.config.process_name,
-                        )
-                        continue
-
-                    if not self.is_target_process_active():
-                        continue
-
-                    if self.config.quicksave_save:
-                        self.send_quicksave_key_to_game()
-
-                except Exception as e:
-                    self.logger.error("An error occurred during the main loop: %s", str(e))
-                    self.sound.play_error()
-                    time.sleep(2)  # Prevent rapid error loop
-
+            self._main_loop()
         except KeyboardInterrupt:
             self.logger.info("Exiting quicksave utility.")
         except Exception as e:
@@ -84,16 +59,43 @@ class QuicksaveUtility:
             self.save_observer.stop()
             self.save_observer.join()
 
-    def is_target_process_running(self) -> bool:
-        """Check if the target process (Starfield.exe) is running."""
+    def _main_loop(self) -> None:
+        while True:
+            try:
+                time.sleep(self.config.check_interval)
+
+                if not self._is_target_process_running():
+                    self.logger.debug(
+                        "Skipping check because %s.exe is not running.", self.config.process_name
+                    )
+                    continue
+
+                if not self._is_target_process_active():
+                    continue
+
+                if self.config.quicksave_save:
+                    self.send_quicksave_command_to_game()
+
+            except Exception as e:
+                self.logger.error("An error occurred during the main loop: %s", str(e))
+                self.sound.play_error()
+                time.sleep(2)  # Prevent rapid error loop
+
+    def _is_target_process_running(self) -> bool:
         target_process = f"{self.config.process_name}.exe"
         return any(
             process.info["name"].lower() == target_process.lower()
             for process in psutil.process_iter(["name"])
         )
 
-    def get_foreground_process_name(self) -> str:
-        """Get the name of the process that is currently in focus."""
+    def _is_target_process_active(self) -> bool:
+        foreground_process = self._get_foreground_process_name()
+        if not foreground_process.lower().startswith(self.config.process_name.lower()):
+            self.logger.debug("Skipping check because %s is in focus.", foreground_process)
+            return False
+        return True
+
+    def _get_foreground_process_name(self) -> str:
         hwnd = win32gui.GetForegroundWindow()
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         handle = win32api.OpenProcess(
@@ -105,46 +107,38 @@ class QuicksaveUtility:
         finally:
             win32api.CloseHandle(handle)
 
-    def is_target_process_active(self) -> bool:
-        """Check if the target process is in focus."""
-        foreground_process = self.get_foreground_process_name()
-        if not foreground_process.lower().startswith(self.config.process_name.lower()):
-            self.logger.debug("Skipping check because %s is in focus.", foreground_process)
-            return False
-        return True
-
-    def game_save_detected(self, save_path: str) -> None:
-        """Handle a manual quicksave event or an autosave event."""
-        if self.save_in_progress:
-            self.save_in_progress = False
-            return
-
-        save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
-        if (
-            self.last_initiated_quicksave_time is None
-            or save_time > self.last_initiated_quicksave_time + timedelta(seconds=2)
-        ) and (self.last_quicksave_time is None or save_time > self.last_quicksave_time):
-            save_type = "autosave" if "Autosave" in save_path else "quicksave"
-            self.logger.info(
-                "Resetting timer due to %s: %s", save_type, os.path.basename(save_path)
-            )
-            self.last_quicksave_time = save_time
-            self.sound.play_info()
-
-    def send_quicksave_key_to_game(self) -> None:
+    def send_quicksave_command_to_game(self) -> None:
         """Create a new quicksave by sending F5 to the game."""
         current_time = datetime.now(tz=TZ)
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Scheduled interval time reached; sending quicksave key to game.")
+            self.logger.info("Scheduled interval reached; sending quicksave key to game.")
             self.save_in_progress = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
             self.last_quicksave_time = current_time
 
-    def copy_save(self, source: str) -> bool:
+    def new_game_save_detected(self, save_path: str) -> None:
+        """Handle a manual quicksave event or an autosave event."""
+        if self.save_in_progress:
+            self.save_in_progress = False
+            return
+
+        save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
+
+        if self.last_quicksave_time is None or save_time > self.last_quicksave_time:
+            save_type = "autosave" if "Autosave" in save_path else "quicksave"
+            self.logger.info(
+                "Resetting timer due to %s: %s", save_type, os.path.basename(save_path)
+            )
+            self.last_quicksave_time = save_time
+            self.sound.play_info()
+        else:
+            self.logger.debug("Save is not newer than last quicksave, ignoring")
+
+    def copy_save_to_new_file(self, source: str) -> bool:
         """Copy the save to a new file with a name matching the game's format."""
         if source == self.last_copied_save_name:
             self.logger.debug("Skipping save already copied: %s", os.path.basename(source))
@@ -163,7 +157,7 @@ class QuicksaveUtility:
             copy_win32_file(source, destination)
             self.logger.info(
                 "Copied most recent %s to %s.",
-                self.identify_save_type(source),
+                self._identify_save_type(source),
                 os.path.basename(destination),
             )
             self.sound.play_success()
