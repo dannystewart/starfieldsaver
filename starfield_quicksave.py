@@ -122,7 +122,7 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Scheduled interval time reached; quicksaving.")
+            self.logger.info("Scheduled interval time reached; sending quicksave key to game.")
             self.save_in_progress = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
@@ -154,8 +154,12 @@ class QuicksaveUtility:
 
     def _attempt_save_copy(self) -> bool | None:
         """
-        Attempt to copy the latest quicksave file. Returns True if copy was successful, False if no
-        copy was needed, None if should retry.
+        Attempt to copy the latest quicksave file.
+
+        Returns:
+            - True if the copy was successful.
+            - False if no copy was needed.
+            - None to indicate the save should be retried.
         """
         latest_quicksave = self.find_latest_quicksave()
         if latest_quicksave is None:

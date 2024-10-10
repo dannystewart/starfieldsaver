@@ -14,17 +14,17 @@ class QuicksaveConfig:
     Configuration for behavior of the quicksave utility.
 
     Attributes:
-        save_directory: Directory where save files are stored
-        process_name: Name of the game process to monitor (without extension)
-        check_interval: Time between checks (in seconds)
-        quicksave_save: Whether to create quicksaves
-        quicksave_interval: Time between quicksaves (in seconds)
-        quicksave_copy: Whether to copy quicksaves to regular saves
-        play_info_sound: Whether to play info sounds
-        play_error_sound: Whether to play error sounds
-        info_volume: Volume for info sounds (0.0 to 1.0)
-        error_volume: Volume for error sounds (0.0 to 1.0)
-        debug_log: Whether to enable debug logging
+        save_directory: Directory where save files are stored.
+        process_name: Name of the game process to monitor (without extension).
+        check_interval: Time between checks (in seconds).
+        quicksave_save: Whether to create quicksaves.
+        quicksave_interval: Time between quicksaves (in seconds).
+        quicksave_copy: Whether to copy quicksaves to regular saves.
+        play_info_sound: Whether to play info sounds.
+        play_error_sound: Whether to play error sounds.
+        info_volume: Volume for info sounds (0.0 to 1.0).
+        error_volume: Volume for error sounds (0.0 to 1.0).
+        debug_log: Whether to enable debug logging.
     """
 
     save_directory: str
