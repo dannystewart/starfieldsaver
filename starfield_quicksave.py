@@ -37,8 +37,8 @@ class QuicksaveUtility:
         self.sound = SoundPlayer(self.logger)
 
         # Initialize last save times and flags
-        self.last_copy_time: datetime | None = None
         self.last_quicksave_time: datetime | None = None
+        self.last_copied_save_name: str | None = None
         self.save_in_progress = False
 
         # Set up file watchers and log configuration
@@ -67,9 +67,6 @@ class QuicksaveUtility:
 
                     if self.config.quicksave_save:
                         self.send_quicksave_key_to_game()
-
-                    if self.config.quicksave_copy:
-                        self.copy_to_regular_save()
 
                 except Exception as e:
                     self.logger.error("An error occurred during the main loop: %s", str(e))
@@ -116,6 +113,24 @@ class QuicksaveUtility:
             return False
         return True
 
+    def game_save_detected(self, save_path: str) -> None:
+        """Handle a manual quicksave event or an autosave event."""
+        if self.save_in_progress:
+            self.save_in_progress = False
+            return
+
+        save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
+        if (
+            self.last_initiated_quicksave_time is None
+            or save_time > self.last_initiated_quicksave_time + timedelta(seconds=2)
+        ) and (self.last_quicksave_time is None or save_time > self.last_quicksave_time):
+            save_type = "autosave" if "Autosave" in save_path else "quicksave"
+            self.logger.info(
+                "Resetting timer due to %s: %s", save_type, os.path.basename(save_path)
+            )
+            self.last_quicksave_time = save_time
+            self.sound.play_info()
+
     def send_quicksave_key_to_game(self) -> None:
         """Create a new quicksave by sending F5 to the game."""
         current_time = datetime.now(tz=TZ)
@@ -129,56 +144,37 @@ class QuicksaveUtility:
             self.keyboard.release(Key.f5)
             self.last_quicksave_time = current_time
 
-    def copy_to_regular_save(self) -> None:
-        """Copy the latest quicksave to a regular save if newer than the last copied quicksave."""
-        max_attempts = 2
-        for attempt in range(max_attempts):
-            try:
-                if result := self._attempt_save_copy():
-                    return
-                if result is False:  # No new quicksave to copy
-                    return
+    def copy_save(self, source: str) -> bool:
+        """Copy the save to a new file with a name matching the game's format."""
+        if source == self.last_copied_save_name:
+            self.logger.debug("Skipping save already copied: %s", os.path.basename(source))
+            return False
 
-            # If result is None, it means we should retry
-            except Exception as e:
-                self.logger.error(
-                    "Error during copy operation (attempt %d): %s", attempt + 1, str(e)
-                )
+        save_files = list_files(self.config.save_directory, extensions=["sfs"])
+        source_filename = os.path.basename(source)
 
-            if attempt < max_attempts - 1:
-                self.logger.info("Retrying copy operation...")
-                time.sleep(1)  # Wait a second before retrying
-            else:
-                self.sound.play_error()  # Play error sound after all attempts fail
-                self.logger.error("Failed to copy quicksave after %d attempts", max_attempts)
+        next_save_id = self._get_next_save_id(save_files)
+        self.logger.debug("Found %s saves. Next ID is %s.", len(save_files), next_save_id)
 
-    def _attempt_save_copy(self) -> bool | None:
-        """
-        Attempt to copy the latest quicksave file.
+        new_filename = re.sub(r"^(Quicksave0|Autosave)", f"Save{next_save_id}", source_filename)
+        destination = os.path.join(self.config.save_directory, new_filename)
 
-        Returns:
-            - True if the copy was successful.
-            - False if no copy was needed.
-            - None to indicate the save should be retried.
-        """
-        latest_quicksave = self.find_latest_quicksave()
-        if latest_quicksave is None:
-            self.logger.warning("No quicksave files found.")
-            return None  # Should retry
+        try:
+            copy_win32_file(source, destination)
+            self.logger.info(
+                "Copied most recent %s to %s.",
+                self.identify_save_type(source),
+                os.path.basename(destination),
+            )
+            self.sound.play_success()
+            self.last_copied_save_name = source
+            return True
+        except Exception as e:
+            self.logger.error("Failed to copy file: %s", str(e))
+            self.sound.play_error()
+            return False
 
-        quicksave_file, quicksave_time = latest_quicksave
-        if not os.path.exists(quicksave_file):
-            self.logger.warning("Quicksave file no longer exists: %s", quicksave_file)
-            return None  # Should retry
-
-        if self.last_copy_time is None or quicksave_time > self.last_copy_time:
-            if self.copy_save(quicksave_file):
-                self.last_copy_time = quicksave_time
-                return True  # Copied successfully
-            return None  # Should retry
-        return False  # No copy needed
-
-    def _get_new_save_id(self, save_files: list[str]) -> int:
+    def _get_next_save_id(self, save_files: list[str]) -> int:
         """Get the next available save ID."""
         highest_save_id = max(
             [
@@ -190,59 +186,14 @@ class QuicksaveUtility:
         )
         return highest_save_id + 1
 
-    def find_latest_quicksave(self) -> tuple[str, datetime] | None:
-        """Find the latest quicksave file."""
-        try:
-            quicksaves = list_files(
-                self.config.save_directory,
-                extensions=["sfs"],
-                sort_key=lambda x: x.stat().st_mtime,
-                reverse_sort=True,
-            )
-            for quicksave in quicksaves:
-                if os.path.basename(quicksave).startswith("Quicksave0"):
-                    quicksave_path = str(quicksave)
-                    if os.path.exists(quicksave_path):
-                        return quicksave_path, datetime.fromtimestamp(
-                            os.path.getmtime(quicksave_path), tz=TZ
-                        )
-            return None
-        except Exception as e:
-            self.logger.error("Error finding latest quicksave: %s", str(e))
-            return None
-
-    def manual_quicksave_detected(self, quicksave_path: str) -> None:
-        """Handle a manual quicksave event."""
-        if self.save_in_progress:
-            self.save_in_progress = False
-            return
-
-        quicksave_time = datetime.now(tz=TZ)
-        if self.last_quicksave_time is None or quicksave_time > self.last_quicksave_time:
-            self.logger.info(
-                "Resetting timer due to manual quicksave: %s", os.path.basename(quicksave_path)
-            )
-            self.last_quicksave_time = quicksave_time
-            self.sound.play_info()
-
-    def copy_save(self, source: str) -> bool:
-        """Copy the save to a new file with a name matching the game's format."""
-        save_files = list_files(self.config.save_directory, extensions=["sfs"])
-        source_filename = os.path.basename(source)
-
-        new_save_id = self._get_new_save_id(save_files)
-        new_filename = re.sub(r"^Quicksave0", f"Save{new_save_id}", source_filename)
-        destination = os.path.join(self.config.save_directory, new_filename)
-
-        try:
-            copy_win32_file(source, destination)
-            self.sound.play_success()
-            save_type = self.identify_save_type(new_filename)
-            self.logger.info("Copied %s to %s.", save_type, os.path.basename(destination))
-            return True
-        except Exception as e:
-            self.logger.error("Failed to copy file: %s", str(e))
-            return False
+    def _identify_save_type(self, save_path: str) -> str:
+        return (
+            "quicksave"
+            if "Quicksave0" in save_path
+            else "autosave"
+            if "Autosave" in save_path
+            else "manual save"
+        )
 
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""

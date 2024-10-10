@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
@@ -32,7 +33,11 @@ class SaveFileHandler(FileSystemEventHandler):
         """Handle a file move in the save directory."""
         if (
             not event.is_directory
-            and event.dest_path.endswith(".sfs")
-            and "Quicksave0" in event.dest_path
+            and event.src_path.endswith(".sfs")
+            and ("Quicksave0" in event.src_path or "Autosave" in event.src_path)
         ):
-            self.quicksave_utility.manual_quicksave_detected(event.dest_path)
+            self.quicksave_utility.logger.debug(
+                "New file detected: %s", os.path.basename(event.src_path)
+            )
+            if self.quicksave_utility.config.quicksave_copy:
+                self.quicksave_utility.copy_save(event.src_path)
