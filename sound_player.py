@@ -38,6 +38,11 @@ class SoundPlayer:
             self.play_beep = self.winsound_beep
             self.logger.debug("Pygame not available. Using winsound for sound playback.")
 
+    def play_success(self) -> None:
+        """Play a success sound to indicate a save action."""
+        self.logger.debug("Playing success sound.")
+        self.play_beep(440, 0.05, pause=0, vol=0.1)
+
     def play_info(self) -> None:
         """Play an info sound to update the user."""
         self.logger.debug("Playing info sound.")

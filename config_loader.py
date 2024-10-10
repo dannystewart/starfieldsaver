@@ -20,8 +20,7 @@ class QuicksaveConfig:
         quicksave_save: Whether to create quicksaves.
         quicksave_interval: Time between quicksaves (in seconds).
         quicksave_copy: Whether to copy quicksaves to regular saves.
-        play_info_sound: Whether to play info sounds.
-        play_error_sound: Whether to play error sounds.
+        enable_sounds: Whether to play sounds on events.
         info_volume: Volume for info sounds (0.0 to 1.0).
         error_volume: Volume for error sounds (0.0 to 1.0).
         debug_log: Whether to enable debug logging.
@@ -33,8 +32,7 @@ class QuicksaveConfig:
     quicksave_save: bool = True
     quicksave_interval: float = 240.0
     quicksave_copy: bool = True
-    play_info_sound: bool = True
-    play_error_sound: bool = True
+    enable_sounds: bool = True
     info_volume: float = 0.1
     error_volume: float = 0.5
     debug_log: bool = False

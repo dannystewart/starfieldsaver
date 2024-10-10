@@ -236,7 +236,9 @@ class QuicksaveUtility:
 
         try:
             copy_win32_file(source, destination)
-            self.logger.info("Copied previous quicksave to %s.", os.path.basename(destination))
+            self.sound.play_success()
+            save_type = self.identify_save_type(new_filename)
+            self.logger.info("Copied %s to %s.", save_type, os.path.basename(destination))
             return True
         except Exception as e:
             self.logger.error("Failed to copy file: %s", str(e))
@@ -265,14 +267,13 @@ class QuicksaveUtility:
 
     def _log_config(self) -> None:
         self.logger.debug(
-            "Loaded config: check every %ss, %s%s, info sound %s, error sound %s",
+            "Loaded config: check every %ss, %s%s, sounds %s",
             round(self.config.check_interval),
             f"save every {round(self.config.quicksave_interval)}s"
             if self.config.quicksave_save
             else "save disabled",
             "" if self.config.quicksave_copy else ", copy disabled",
-            "enabled" if self.config.play_info_sound else "disabled",
-            "enabled" if self.config.play_error_sound else "disabled",
+            "enabled" if self.config.enable_sounds else "disabled",
         )
 
 
