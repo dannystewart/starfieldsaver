@@ -47,7 +47,16 @@ class QuicksaveUtility:
         # Variables to track logging
         self.logging_paused = False
         self.last_logging_check = datetime.now(tz=TZ)
-        self.reminder_interval = timedelta(seconds=600)  # 10 minutes
+
+        # How often to log reminder that checks are still on hold
+        self.reminder_default = timedelta(seconds=600)  # 10 minutes
+        self.reminder_interval = self.reminder_default
+
+        # How much to increment the reminder time by each time
+        self.reminder_increment = timedelta(seconds=300)  # 5 minutes
+
+        # Maximum time in minutes before the reminder stops incrementing
+        self.reminder_max_minutes = 30
 
         self._setup_config_watcher()
         self._setup_save_watcher()
@@ -96,11 +105,11 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Scheduled interval reached; sending quicksave command to game.")
             self.is_scheduled_save = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
+            self.logger.info("Created quicksave at scheduled interval time.")
             self.last_quicksave_time = current_time
 
     @staticmethod
@@ -112,7 +121,7 @@ class QuicksaveUtility:
 
     def new_game_save_detected(self, save_path: str) -> None:
         """Handle a manual quicksave event or an autosave event."""
-        self.logger.info("New save file detected: %s", os.path.basename(save_path))
+        self.logger.debug("New save detected: %s", os.path.basename(save_path))
         save_type = self.identify_save_type(save_path)
 
         if save_type == SaveType.MANUAL:
@@ -121,8 +130,10 @@ class QuicksaveUtility:
 
         # If this was a scheduled interval save, treat it as automatic
         if self.is_scheduled_save:
-            self.logger.debug("Quicksave was scheduled. Copying to regular save.")
-            self.copy_save_to_new_file(save_path, auto=True)
+            self.logger.info(
+                "Copying new scheduled quicksave to regular save: %s", os.path.basename(save_path)
+            )
+            self.copy_save_to_new_file(save_path, auto=True, scheduled=True)
             self.is_scheduled_save = False
             return
 
@@ -131,7 +142,7 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or save_time > self.last_quicksave_time:
             if save_type == SaveType.QUICKSAVE:
                 self.logger.info(
-                    "Resetting timer due to user-initiated quicksave: %s",
+                    "Resetting interval timer due to user-initiated quicksave: %s",
                     os.path.basename(save_path),
                 )
                 self.last_quicksave_time = save_time
@@ -140,7 +151,7 @@ class QuicksaveUtility:
                 self.logger.info("New autosave detected: %s", os.path.basename(save_path))
                 self.copy_save_to_new_file(save_path, auto=True)
 
-    def copy_save_to_new_file(self, source: str, auto: bool) -> bool:
+    def copy_save_to_new_file(self, source: str, auto: bool, scheduled: bool = False) -> bool:
         """Copy the save to a new file with a name matching the game's format."""
         if source == self.last_copied_save_name:
             self.logger.debug("Skipping save already copied: %s", os.path.basename(source))
@@ -163,7 +174,8 @@ class QuicksaveUtility:
         try:
             copy_win32_file(source, destination)
             self.logger.info(
-                "Copied most recent %s to %s.",
+                "Copied most recent %s%s to %s.",
+                "scheduled " if scheduled else "",
                 self.identify_save_type(source),
                 os.path.basename(destination),
             )
@@ -206,7 +218,7 @@ class QuicksaveUtility:
 
         if not is_running:
             if self.game_is_running:
-                self.logger.debug(
+                self.logger.info(
                     "Skipping checks while %s.exe is not running.",
                     self.config.process_name,
                 )
@@ -222,7 +234,7 @@ class QuicksaveUtility:
 
         if not is_active:
             if self.game_in_foreground or foreground_process != self.last_foreground_process:
-                self.logger.debug("Skipping checks while %s is in focus.", foreground_process)
+                self.logger.info("Skipping checks while %s is in focus.", foreground_process)
             self.game_in_foreground = False
             self.last_foreground_process = foreground_process
         else:
@@ -248,8 +260,9 @@ class QuicksaveUtility:
         self._log_config()
 
     def _setup_logger(self) -> logging.Logger:
-        log_level = "debug" if self.config.debug_log else "info"
-        return LocalLogger.setup_logger("quicksave", level=log_level)
+        level = "debug" if self.config.debug_log else "info"
+        color = self.config.color_log
+        return LocalLogger.setup_logger("quicksave", level=level, use_color=color)
 
     def _setup_config_watcher(self) -> None:
         self.config_observer = Observer()
@@ -278,17 +291,31 @@ class QuicksaveUtility:
         current_time = datetime.now(tz=TZ)
         if self.game_is_running and self.game_in_foreground:
             self.logging_paused = False
+            self.reminder_interval = self.reminder_default
 
         elif not self.logging_paused:
             self.logging_paused = True
             self.last_logging_check = current_time
+            self._increment_reminder_time()
 
         elif current_time - self.last_logging_check > self.reminder_interval:
-            if not self.game_is_running:
-                self.logger.debug("On hold. %s.exe is not running.", self.config.process_name)
-            else:
-                self.logger.debug("On hold while %s is in focus.", self.last_foreground_process)
+            self.logger.info("Still waiting for %s.exe.", self.config.process_name)
             self.last_logging_check = current_time
+            self._increment_reminder_time()
+
+    def _format_timedelta(self, td: timedelta) -> str:
+        total_seconds = int(td.total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        return f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+
+    def _increment_reminder_time(self) -> None:
+        if self.reminder_interval < timedelta(minutes=self.reminder_max_minutes):
+            self.reminder_interval += self.reminder_increment
+            formatted_time = self._format_timedelta(self.reminder_interval)
+            self.logger.debug("Reminder interval increased to %s.", formatted_time)
 
 
 if __name__ == "__main__":
