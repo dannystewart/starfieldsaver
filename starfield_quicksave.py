@@ -34,9 +34,15 @@ class QuicksaveUtility:
         self.keyboard = Controller()
         self.sound = SoundPlayer(self.logger)
 
+        # Variables to track save information
         self.last_quicksave_time: datetime | None = None
         self.last_copied_save_name: str | None = None
         self.is_scheduled_save: bool = False
+
+        # Variables to track process information
+        self.game_is_running: bool = True
+        self.game_in_foreground: bool = True
+        self.last_foreground_process: str = ""
 
         self._setup_config_watcher()
         self._setup_save_watcher()
@@ -65,13 +71,30 @@ class QuicksaveUtility:
                 time.sleep(self.config.check_interval)
 
                 if not self._is_target_process_running():
-                    self.logger.debug(
-                        "Skipping check because %s.exe is not running.", self.config.process_name
-                    )
+                    if self.game_is_running:
+                        self.logger.debug(
+                            "Skipping checks while %s.exe is not running.",
+                            self.config.process_name,
+                        )
+                    self.game_is_running = False
                     continue
 
+                self.game_is_running = True
+
                 if not self._is_target_process_active():
+                    foreground_process = self._get_foreground_process_name()
+                    if (
+                        self.game_in_foreground
+                        or foreground_process != self.last_foreground_process
+                    ):
+                        self.logger.debug(
+                            "Skipping checks while %s is in focus.", foreground_process
+                        )
+                    self.game_in_foreground = False
+                    self.last_foreground_process = foreground_process
                     continue
+
+                self.game_in_foreground = True
 
                 if self.config.quicksave_save:
                     self.save_on_interval()
@@ -90,10 +113,7 @@ class QuicksaveUtility:
 
     def _is_target_process_active(self) -> bool:
         foreground_process = self._get_foreground_process_name()
-        if not foreground_process.lower().startswith(self.config.process_name.lower()):
-            self.logger.debug("Skipping check because %s is in focus.", foreground_process)
-            return False
-        return True
+        return foreground_process.lower().startswith(self.config.process_name.lower())
 
     def _get_foreground_process_name(self) -> str:
         hwnd = win32gui.GetForegroundWindow()
