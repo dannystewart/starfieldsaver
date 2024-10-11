@@ -76,7 +76,7 @@ class QuicksaveUtility:
                 time.sleep(self.config.check_interval)
                 self._check_logging_status()
 
-                if not self._is_target_process_running():
+                if not self._is_game_running():
                     if self.game_is_running:
                         self.logger.debug(
                             "Skipping checks while %s.exe is not running.",
@@ -87,8 +87,8 @@ class QuicksaveUtility:
 
                 self.game_is_running = True
 
-                if not self._is_target_process_active():
-                    foreground_process = self._get_foreground_process_name()
+                if not self._is_game_active():
+                    foreground_process = self._get_foreground_process()
                     if (
                         self.game_in_foreground
                         or foreground_process != self.last_foreground_process
@@ -129,18 +129,18 @@ class QuicksaveUtility:
         else:
             self.logging_paused = False
 
-    def _is_target_process_running(self) -> bool:
-        target_process = f"{self.config.process_name}.exe"
+    def _is_game_running(self) -> bool:
+        game_process = f"{self.config.process_name}.exe"
         return any(
-            process.info["name"].lower() == target_process.lower()
+            process.info["name"].lower() == game_process.lower()
             for process in psutil.process_iter(["name"])
         )
 
-    def _is_target_process_active(self) -> bool:
-        foreground_process = self._get_foreground_process_name()
+    def _is_game_active(self) -> bool:
+        foreground_process = self._get_foreground_process()
         return foreground_process.lower().startswith(self.config.process_name.lower())
 
-    def _get_foreground_process_name(self) -> str:
+    def _get_foreground_process(self) -> str:
         hwnd = win32gui.GetForegroundWindow()
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         handle = win32api.OpenProcess(
