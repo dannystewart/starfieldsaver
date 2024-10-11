@@ -47,7 +47,7 @@ class QuicksaveUtility:
         # Variables to track logging
         self.logging_paused = False
         self.last_logging_check = datetime.now(tz=TZ)
-        self.logging_interval = timedelta(seconds=300)  # 5 minutes
+        self.reminder_interval = timedelta(seconds=600)  # 10 minutes
 
         self._setup_config_watcher()
         self._setup_save_watcher()
@@ -77,30 +77,10 @@ class QuicksaveUtility:
                 self._check_logging_status()
 
                 if not self._is_game_running():
-                    if self.game_is_running:
-                        self.logger.debug(
-                            "Skipping checks while %s.exe is not running.",
-                            self.config.process_name,
-                        )
-                    self.game_is_running = False
                     continue
 
-                self.game_is_running = True
-
-                if not self._is_game_active():
-                    foreground_process = self._get_foreground_process()
-                    if (
-                        self.game_in_foreground
-                        or foreground_process != self.last_foreground_process
-                    ):
-                        self.logger.debug(
-                            "Skipping checks while %s is in focus.", foreground_process
-                        )
-                    self.game_in_foreground = False
-                    self.last_foreground_process = foreground_process
+                if not self._is_game_in_foreground():
                     continue
-
-                self.game_in_foreground = True
 
                 if self.config.quicksave_save:
                     self.save_on_interval()
@@ -109,48 +89,6 @@ class QuicksaveUtility:
                 self.logger.error("An error occurred during the main loop: %s", str(e))
                 self.sound.play_error()
                 time.sleep(2)  # Prevent rapid error loop
-
-    def _check_logging_status(self) -> None:
-        current_time = datetime.now(tz=TZ)
-        if not self.game_is_running or not self.game_in_foreground:
-            if not self.logging_paused:
-                self.logging_paused = True
-                self.last_logging_check = current_time
-            elif current_time - self.last_logging_check > self.logging_interval:
-                if not self.game_is_running:
-                    self.logger.debug(
-                        "Still skipping while %s.exe is not running.", self.config.process_name
-                    )
-                else:
-                    self.logger.debug(
-                        "Still skipping while %s is in focus.", self.last_foreground_process
-                    )
-                self.last_logging_check = current_time
-        else:
-            self.logging_paused = False
-
-    def _is_game_running(self) -> bool:
-        game_process = f"{self.config.process_name}.exe"
-        return any(
-            process.info["name"].lower() == game_process.lower()
-            for process in psutil.process_iter(["name"])
-        )
-
-    def _is_game_active(self) -> bool:
-        foreground_process = self._get_foreground_process()
-        return foreground_process.lower().startswith(self.config.process_name.lower())
-
-    def _get_foreground_process(self) -> str:
-        hwnd = win32gui.GetForegroundWindow()
-        _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        handle = win32api.OpenProcess(
-            win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid
-        )
-        try:
-            process_path = win32process.GetModuleFileNameEx(handle, 0)
-            return os.path.basename(process_path)
-        finally:
-            win32api.CloseHandle(handle)
 
     def save_on_interval(self) -> None:
         """Create a new quicksave by sending F5 to the game."""
@@ -257,6 +195,51 @@ class QuicksaveUtility:
             else "manual save"
         )
 
+    def _is_game_running(self) -> bool:
+        game_process = f"{self.config.process_name}.exe"
+        is_running = any(
+            process.info["name"].lower() == game_process.lower()
+            for process in psutil.process_iter(["name"])
+        )
+
+        if not is_running:
+            if self.game_is_running:
+                self.logger.debug(
+                    "Skipping checks while %s.exe is not running.",
+                    self.config.process_name,
+                )
+            self.game_is_running = False
+        else:
+            self.game_is_running = True
+
+        return is_running
+
+    def _is_game_in_foreground(self) -> bool:
+        foreground_process = self._get_foreground_process()
+        is_active = foreground_process.lower().startswith(self.config.process_name.lower())
+
+        if not is_active:
+            if self.game_in_foreground or foreground_process != self.last_foreground_process:
+                self.logger.debug("Skipping checks while %s is in focus.", foreground_process)
+            self.game_in_foreground = False
+            self.last_foreground_process = foreground_process
+        else:
+            self.game_in_foreground = True
+
+        return is_active
+
+    def _get_foreground_process(self) -> str:
+        hwnd = win32gui.GetForegroundWindow()
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        handle = win32api.OpenProcess(
+            win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid
+        )
+        try:
+            process_path = win32process.GetModuleFileNameEx(handle, 0)
+            return os.path.basename(process_path)
+        finally:
+            win32api.CloseHandle(handle)
+
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""
         self.config = ConfigLoader.reload(self.config, self.logger)
@@ -288,6 +271,22 @@ class QuicksaveUtility:
             "" if self.config.quicksave_copy else ", copy disabled",
             "enabled" if self.config.enable_sounds else "disabled",
         )
+
+    def _check_logging_status(self) -> None:
+        current_time = datetime.now(tz=TZ)
+        if self.game_is_running and self.game_in_foreground:
+            self.logging_paused = False
+
+        elif not self.logging_paused:
+            self.logging_paused = True
+            self.last_logging_check = current_time
+
+        elif current_time - self.last_logging_check > self.reminder_interval:
+            if not self.game_is_running:
+                self.logger.debug("On hold. %s.exe is not running.", self.config.process_name)
+            else:
+                self.logger.debug("On hold while %s is in focus.", self.last_foreground_process)
+            self.last_logging_check = current_time
 
 
 if __name__ == "__main__":
