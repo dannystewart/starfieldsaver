@@ -31,28 +31,13 @@ class SaveFileHandler(FileSystemEventHandler):
 
     def on_moved(self, event: FileMovedEvent) -> None:
         """Handle a file move in the save directory."""
-        self.quicksave_utility.logger.debug(
-            "File moved: %s to %s",
-            os.path.basename(event.src_path),
-            os.path.basename(event.dest_path),
-        )
-
-        if not event.is_directory and event.dest_path.endswith(".sfs"):
-            self.quicksave_utility.logger.debug(
-                "Detected .sfs file: %s", os.path.basename(event.dest_path)
+        if (
+            not event.is_directory
+            and event.dest_path.endswith(".sfs")
+            and ("Quicksave0" in event.dest_path or "Autosave" in event.dest_path)
+        ):
+            self.quicksave_utility.logger.info(
+                "New save file detected: %s", os.path.basename(event.dest_path)
             )
-
-            if "Quicksave0" in event.dest_path or "Autosave" in event.dest_path:
-                self.quicksave_utility.logger.info(
-                    "New save file detected: %s", os.path.basename(event.dest_path)
-                )
-
-                if self.quicksave_utility.config.quicksave_copy:
-                    self.quicksave_utility.new_game_save_detected(event.dest_path)
-                    self.quicksave_utility.copy_save_to_new_file(event.dest_path)
-            else:
-                self.quicksave_utility.logger.debug(
-                    "File is not a quicksave or autosave, ignoring."
-                )
-        else:
-            self.quicksave_utility.logger.debug("Moved item is not a .sfs file, ignoring.")
+            if self.quicksave_utility.config.quicksave_copy:
+                self.quicksave_utility.new_game_save_detected(event.dest_path)

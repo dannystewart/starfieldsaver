@@ -74,7 +74,7 @@ class QuicksaveUtility:
                     continue
 
                 if self.config.quicksave_save:
-                    self.send_quicksave_command_to_game()
+                    self.save_on_interval()
 
             except Exception as e:
                 self.logger.error("An error occurred during the main loop: %s", str(e))
@@ -107,7 +107,7 @@ class QuicksaveUtility:
         finally:
             win32api.CloseHandle(handle)
 
-    def send_quicksave_command_to_game(self) -> None:
+    def save_on_interval(self) -> None:
         """Create a new quicksave by sending F5 to the game."""
         current_time = datetime.now(tz=TZ)
         if self.last_quicksave_time is None or (
@@ -119,6 +119,7 @@ class QuicksaveUtility:
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
             self.last_quicksave_time = current_time
+            self.sound.play_success()
 
     def new_game_save_detected(self, save_path: str) -> None:
         """Handle a manual quicksave event or an autosave event."""
@@ -130,15 +131,17 @@ class QuicksaveUtility:
 
         if self.last_quicksave_time is None or save_time > self.last_quicksave_time:
             save_type = "autosave" if "Autosave" in save_path else "quicksave"
-            self.logger.info(
-                "Resetting timer due to %s: %s", save_type, os.path.basename(save_path)
-            )
-            self.last_quicksave_time = save_time
-            self.sound.play_info()
-        else:
-            self.logger.debug("Save is not newer than last quicksave, ignoring")
+            if save_type == "quicksave":
+                self.logger.info(
+                    "Resetting timer due to manual quicksave: %s", os.path.basename(save_path)
+                )
+                self.last_quicksave_time = save_time
+                self.copy_save_to_new_file(save_path, auto=False)
+            else:
+                self.logger.info("New autosave: %s", os.path.basename(save_path))
+                self.copy_save_to_new_file(save_path, auto=True)
 
-    def copy_save_to_new_file(self, source: str) -> bool:
+    def copy_save_to_new_file(self, source: str, auto: bool) -> bool:
         """Copy the save to a new file with a name matching the game's format."""
         if source == self.last_copied_save_name:
             self.logger.debug("Skipping save already copied: %s", os.path.basename(source))
@@ -160,7 +163,10 @@ class QuicksaveUtility:
                 self._identify_save_type(source),
                 os.path.basename(destination),
             )
-            self.sound.play_success()
+            if auto:
+                self.sound.play_success()
+            else:
+                self.sound.play_notification()
             self.last_copied_save_name = source
             return True
         except Exception as e:

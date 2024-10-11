@@ -43,7 +43,7 @@ class SoundPlayer:
         self.logger.debug("Playing success sound.")
         self.play_beep(440, 0.05, pause=0, vol=0.1)
 
-    def play_info(self) -> None:
+    def play_notification(self) -> None:
         """Play an info sound to update the user."""
         self.logger.debug("Playing info sound.")
         self.play_beep(400, 0.1, pause=0, vol=0.1)
