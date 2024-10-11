@@ -36,7 +36,7 @@ class QuicksaveUtility:
 
         self.last_quicksave_time: datetime | None = None
         self.last_copied_save_name: str | None = None
-        self.save_in_progress = False
+        self.is_scheduled_save: bool = False
 
         self._setup_config_watcher()
         self._setup_save_watcher()
@@ -113,18 +113,22 @@ class QuicksaveUtility:
         if self.last_quicksave_time is None or (
             current_time - self.last_quicksave_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
-            self.logger.info("Scheduled interval reached; sending quicksave key to game.")
-            self.save_in_progress = True
+            self.logger.info("Scheduled interval reached; sending quicksave command to game.")
+            self.is_scheduled_save = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
             self.last_quicksave_time = current_time
-            self.sound.play_success()
 
     def new_game_save_detected(self, save_path: str) -> None:
         """Handle a manual quicksave event or an autosave event."""
-        if self.save_in_progress:
-            self.save_in_progress = False
+        self.logger.info("New save file detected: %s", os.path.basename(save_path))
+
+        # If this was a scheduled interval save, treat it as automatic
+        if self.is_scheduled_save:
+            self.logger.debug("Quicksave was scheduled. Copying to regular save.")
+            self.copy_save_to_new_file(save_path, auto=True)
+            self.is_scheduled_save = False
             return
 
         save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
@@ -133,12 +137,13 @@ class QuicksaveUtility:
             save_type = "autosave" if "Autosave" in save_path else "quicksave"
             if save_type == "quicksave":
                 self.logger.info(
-                    "Resetting timer due to manual quicksave: %s", os.path.basename(save_path)
+                    "Resetting timer due to user-initiated quicksave: %s",
+                    os.path.basename(save_path),
                 )
                 self.last_quicksave_time = save_time
                 self.copy_save_to_new_file(save_path, auto=False)
             else:
-                self.logger.info("New autosave: %s", os.path.basename(save_path))
+                self.logger.info("New autosave detected: %s", os.path.basename(save_path))
                 self.copy_save_to_new_file(save_path, auto=True)
 
     def copy_save_to_new_file(self, source: str, auto: bool) -> bool:

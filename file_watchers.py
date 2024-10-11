@@ -15,29 +15,33 @@ class ConfigFileHandler(FileSystemEventHandler):
     """Watchdog event handler for changes to the quicksave configuration file."""
 
     def __init__(self, quicksave_utility: QuicksaveUtility):
-        self.quicksave_utility = quicksave_utility
+        self.saver = quicksave_utility
 
     def on_modified(self, event: FileModifiedEvent) -> None:
         """Reload the configuration when the file is modified."""
         if not event.is_directory and event.src_path.endswith(CONFIG_FILE_NAME):
-            self.quicksave_utility.reload_config()
+            self.saver.reload_config()
 
 
 class SaveFileHandler(FileSystemEventHandler):
     """Watchdog event handler for changes to the save directory."""
 
     def __init__(self, quicksave_utility: QuicksaveUtility):
-        self.quicksave_utility = quicksave_utility
+        self.saver = quicksave_utility
 
     def on_moved(self, event: FileMovedEvent) -> None:
         """Handle a file move in the save directory."""
-        if (
-            not event.is_directory
-            and event.dest_path.endswith(".sfs")
-            and ("Quicksave0" in event.dest_path or "Autosave" in event.dest_path)
-        ):
-            self.quicksave_utility.logger.info(
-                "New save file detected: %s", os.path.basename(event.dest_path)
-            )
-            if self.quicksave_utility.config.quicksave_copy:
-                self.quicksave_utility.new_game_save_detected(event.dest_path)
+        self.saver.logger.debug(
+            "Move event detected: %s -> %s",
+            os.path.basename(event.src_path),
+            os.path.basename(event.dest_path),
+        )
+
+        if not event.is_directory and event.dest_path.endswith(".sfs"):
+            if "Quicksave0" in event.dest_path or "Autosave" in event.dest_path:
+                if self.saver.config.quicksave_copy:
+                    self.saver.new_game_save_detected(event.dest_path)
+            else:
+                self.saver.logger.debug("Moved file is not a quicksave or autosave, ignoring.")
+        else:
+            self.saver.logger.debug("Moved file is not a game save, ignoring.")
