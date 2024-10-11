@@ -44,6 +44,11 @@ class QuicksaveUtility:
         self.game_in_foreground: bool = True
         self.last_foreground_process: str = ""
 
+        # Variables to track logging
+        self.logging_paused = False
+        self.last_logging_check = datetime.now(tz=TZ)
+        self.logging_interval = timedelta(seconds=300)  # 5 minutes
+
         self._setup_config_watcher()
         self._setup_save_watcher()
         self._log_config()
@@ -69,6 +74,7 @@ class QuicksaveUtility:
         while True:
             try:
                 time.sleep(self.config.check_interval)
+                self._check_logging_status()
 
                 if not self._is_target_process_running():
                     if self.game_is_running:
@@ -103,6 +109,25 @@ class QuicksaveUtility:
                 self.logger.error("An error occurred during the main loop: %s", str(e))
                 self.sound.play_error()
                 time.sleep(2)  # Prevent rapid error loop
+
+    def _check_logging_status(self) -> None:
+        current_time = datetime.now(tz=TZ)
+        if not self.game_is_running or not self.game_in_foreground:
+            if not self.logging_paused:
+                self.logging_paused = True
+                self.last_logging_check = current_time
+            elif current_time - self.last_logging_check > self.logging_interval:
+                if not self.game_is_running:
+                    self.logger.debug(
+                        "Still skipping while %s.exe is not running.", self.config.process_name
+                    )
+                else:
+                    self.logger.debug(
+                        "Still skipping while %s is in focus.", self.last_foreground_process
+                    )
+                self.last_logging_check = current_time
+        else:
+            self.logging_paused = False
 
     def _is_target_process_running(self) -> bool:
         target_process = f"{self.config.process_name}.exe"
