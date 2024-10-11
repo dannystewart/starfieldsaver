@@ -150,8 +150,13 @@ class QuicksaveUtility:
         save_files = list_files(self.config.save_directory, extensions=["sfs"])
         source_filename = os.path.basename(source)
 
-        next_save_id = self._get_next_save_id(save_files)
-        self.logger.debug("Found %s saves. Next ID is %s.", len(save_files), next_save_id)
+        highest_save_id, next_save_id = self._get_next_save_id(save_files)
+        self.logger.debug(
+            "Found %s saves. Highest ID is %s. Next ID is %s.",
+            len(save_files),
+            highest_save_id,
+            next_save_id,
+        )
 
         new_filename = re.sub(r"^(Quicksave0|Autosave)", f"Save{next_save_id}", source_filename)
         destination = os.path.join(self.config.save_directory, new_filename)
@@ -174,17 +179,24 @@ class QuicksaveUtility:
             self.sound.play_error()
             return False
 
-    def _get_next_save_id(self, save_files: list[str]) -> int:
-        """Get the next available save ID."""
-        highest_save_id = max(
-            [
-                int(re.match(r"Save(\d+)_.*\.sfs", os.path.basename(f))[1])
-                for f in save_files
-                if re.match(r"Save\d+_.*\.sfs", os.path.basename(f))
-            ]
-            + [0]
-        )
-        return highest_save_id + 1
+    def _get_next_save_id(self, save_files: list[str]) -> tuple[int, int]:
+        """Get the next available save ID. Returns highest existing and next IDs."""
+        save_ids = []
+        for f in save_files:
+            if match := re.match(r"Save(\d{1,4})_[A-F0-9]{8}", os.path.basename(f)):
+                try:
+                    save_id = int(match[1])
+                    save_ids.append(save_id)
+                except ValueError:
+                    self.logger.error("Failed to parse save ID for file: %s", f)
+
+        if not save_ids:
+            self.logger.warning("No valid save IDs found, starting from 0")
+            return 1
+
+        highest_save_id = max(save_ids)
+        next_save_id = highest_save_id + 1
+        return highest_save_id, next_save_id
 
     def _identify_save_type(self, save_path: str) -> str:
         return (
