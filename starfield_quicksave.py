@@ -14,7 +14,7 @@ import win32process  # type: ignore
 from pynput.keyboard import Controller, Key
 from watchdog.observers import Observer
 
-from config_loader import ConfigLoader
+from config_loader import ConfigLoader, SaveType
 from dsutil.files import copy_win32_file, list_files
 from dsutil.log import LocalLogger
 from file_watchers import ConfigFileHandler, SaveFileHandler
@@ -103,9 +103,21 @@ class QuicksaveUtility:
             self.keyboard.release(Key.f5)
             self.last_quicksave_time = current_time
 
+    @staticmethod
+    def identify_save_type(save_path: str) -> SaveType:
+        """Identify the type of save based on the file name."""
+        if "Quicksave0" in save_path:
+            return SaveType.QUICKSAVE
+        return SaveType.AUTOSAVE if "Autosave" in save_path else SaveType.MANUAL
+
     def new_game_save_detected(self, save_path: str) -> None:
         """Handle a manual quicksave event or an autosave event."""
         self.logger.info("New save file detected: %s", os.path.basename(save_path))
+        save_type = self.identify_save_type(save_path)
+
+        if save_type == SaveType.MANUAL:
+            self.logger.debug("Skipping manual save: %s", os.path.basename(save_path))
+            return
 
         # If this was a scheduled interval save, treat it as automatic
         if self.is_scheduled_save:
@@ -117,15 +129,14 @@ class QuicksaveUtility:
         save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
 
         if self.last_quicksave_time is None or save_time > self.last_quicksave_time:
-            save_type = "autosave" if "Autosave" in save_path else "quicksave"
-            if save_type == "quicksave":
+            if save_type == SaveType.QUICKSAVE:
                 self.logger.info(
                     "Resetting timer due to user-initiated quicksave: %s",
                     os.path.basename(save_path),
                 )
                 self.last_quicksave_time = save_time
                 self.copy_save_to_new_file(save_path, auto=False)
-            else:
+            elif save_type == SaveType.AUTOSAVE:
                 self.logger.info("New autosave detected: %s", os.path.basename(save_path))
                 self.copy_save_to_new_file(save_path, auto=True)
 
@@ -153,7 +164,7 @@ class QuicksaveUtility:
             copy_win32_file(source, destination)
             self.logger.info(
                 "Copied most recent %s to %s.",
-                self._identify_save_type(source),
+                self.identify_save_type(source),
                 os.path.basename(destination),
             )
             if auto:
@@ -185,15 +196,6 @@ class QuicksaveUtility:
         highest_save_id = max(save_ids)
         next_save_id = highest_save_id + 1
         return highest_save_id, next_save_id
-
-    def _identify_save_type(self, save_path: str) -> str:
-        return (
-            "quicksave"
-            if "Quicksave0" in save_path
-            else "autosave"
-            if "Autosave" in save_path
-            else "manual save"
-        )
 
     def _is_game_running(self) -> bool:
         game_process = f"{self.config.process_name}.exe"

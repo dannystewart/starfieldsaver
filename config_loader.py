@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 
@@ -129,3 +130,14 @@ class ConfigLoader:
         config_dict |= config.extra_config
         with open(cls.CONFIG_FILE_NAME, "w") as f:
             json.dump(config_dict, f, indent=2)
+
+
+class SaveType(Enum):
+    """Enumeration of save types for Starfield."""
+
+    QUICKSAVE = "quicksave"
+    AUTOSAVE = "autosave"
+    MANUAL = "manual save"
+
+    def __str__(self):
+        return self.value

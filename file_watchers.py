@@ -38,10 +38,7 @@ class SaveFileHandler(FileSystemEventHandler):
         )
 
         if not event.is_directory and event.dest_path.endswith(".sfs"):
-            if "Quicksave0" in event.dest_path or "Autosave" in event.dest_path:
-                if self.saver.config.quicksave_copy:
-                    self.saver.new_game_save_detected(event.dest_path)
-            else:
-                self.saver.logger.debug("Moved file is not a quicksave or autosave, ignoring.")
+            if self.saver.config.quicksave_copy:
+                self.saver.new_game_save_detected(event.dest_path)
         else:
             self.saver.logger.debug("Moved file is not a game save, ignoring.")
