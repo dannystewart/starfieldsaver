@@ -203,10 +203,22 @@ class QuicksaveUtility:
 
         if not save_ids:
             self.logger.warning("No valid save IDs found, starting from 0")
-            return 1
+            return 0, 1
 
         highest_save_id = max(save_ids)
-        next_save_id = highest_save_id + 1
+
+        # Determine the number of digits in the highest save ID
+        digit_count = len(str(highest_save_id))
+
+        # Calculate the maximum possible ID for the current digit count
+        max_id_for_digits = 10**digit_count - 1
+
+        # If we've reached the maximum for the current digit count, start over
+        if highest_save_id == max_id_for_digits:
+            next_save_id = 10 ** (digit_count - 1)
+        else:
+            next_save_id = highest_save_id + 1
+
         return highest_save_id, next_save_id
 
     def _is_game_running(self) -> bool:
