@@ -15,7 +15,7 @@ from pynput.keyboard import Controller, Key
 from watchdog.observers import Observer
 
 from config_loader import ConfigLoader, SaveType
-from dsutil.files import copy_win32_file, list_files
+from dsutil.files import copy_file, list_files
 from dsutil.log import LocalLogger
 from file_watchers import ConfigFileHandler, SaveFileHandler
 from globals import TZ
@@ -181,7 +181,7 @@ class QuicksaveUtility:
         destination = os.path.join(self.config.save_directory, new_filename)
 
         try:
-            copy_win32_file(source, destination)
+            copy_file(source, destination)
             self.logger.info(
                 "Copied most recent %s%s to %s.",
                 "scheduled " if scheduled else "",
@@ -331,7 +331,13 @@ class QuicksaveUtility:
         minutes, seconds = divmod(remainder, 60)
         if hours > 0:
             return f"{hours}h {minutes}m"
-        return f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+        return (
+            f"{minutes}m"
+            if seconds == 0
+            else f"{minutes}m {seconds}s"
+            if minutes > 0
+            else f"{seconds}s"
+        )
 
     def _increment_reminder_time(self) -> None:
         if self.reminder_interval < timedelta(minutes=self.reminder_max_minutes):
