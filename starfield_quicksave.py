@@ -24,12 +24,14 @@ from sound_player import SoundPlayer
 if TYPE_CHECKING:
     import logging
 
+    from config_loader import QuicksaveConfig
+
 
 class QuicksaveUtility:
     """Quicksave utility for Starfield."""
 
     def __init__(self):
-        self.config = ConfigLoader.load()
+        self.config: QuicksaveConfig = ConfigLoader.load()
         self.logger = self._setup_logger()
         self.keyboard = Controller()
         self.sound = SoundPlayer(self.logger)
