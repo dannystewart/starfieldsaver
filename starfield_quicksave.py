@@ -19,6 +19,7 @@ from dsutil.files import copy_win32_file, list_files
 from dsutil.log import LocalLogger
 from file_watchers import ConfigFileHandler, SaveFileHandler
 from globals import TZ
+from save_cleaner import SaveCleaner
 from sound_player import SoundPlayer
 
 if TYPE_CHECKING:
@@ -35,6 +36,7 @@ class QuicksaveUtility:
         self.logger = self._setup_logger()
         self.keyboard = Controller()
         self.sound = SoundPlayer(self.logger)
+        self.save_cleaner: SaveCleaner = SaveCleaner(self.config, self.logger)
 
         # Variables to track save information
         self.last_quicksave_time: datetime | None = None
@@ -68,6 +70,9 @@ class QuicksaveUtility:
         """Run the quicksave utility."""
         self.logger.info("Started quicksave utility for %s.exe.", self.config.process_name)
 
+        # Perform initial save cleanup (if enabled)
+        self.save_cleaner.cleanup_old_saves()
+
         try:
             self._main_loop()
         except KeyboardInterrupt:
@@ -95,6 +100,8 @@ class QuicksaveUtility:
 
                 if self.config.quicksave_save:
                     self.save_on_interval()
+
+                self.save_cleaner.cleanup_saves_if_scheduled()
 
             except Exception as e:
                 self.logger.error("An error occurred during the main loop: %s", str(e))
@@ -272,6 +279,7 @@ class QuicksaveUtility:
         """Reload the configuration from the JSON file."""
         self.config = ConfigLoader.reload(self.config, self.logger)
         self._log_config()
+        self.save_cleaner.cleanup_old_saves()
 
     def _setup_logger(self) -> logging.Logger:
         level = "debug" if self.config.debug_log else "info"

@@ -21,6 +21,8 @@ class QuicksaveConfig:
         quicksave_save: Whether to create quicksaves.
         quicksave_interval: Time between quicksaves (in seconds).
         quicksave_copy: Whether to copy quicksaves to regular saves.
+        days_before_pruning_saves: Number of days before pruning saves to one per day (0 to keep all).
+        save_cleanup_dry_run: Whether to perform a dry run of save cleanup, based on days_before_pruning_saves.
         enable_sounds: Whether to play sounds on events.
         info_volume: Volume for info sounds (0.0 to 1.0).
         error_volume: Volume for error sounds (0.0 to 1.0).
@@ -34,6 +36,8 @@ class QuicksaveConfig:
     quicksave_save: bool = True
     quicksave_interval: float = 240.0
     quicksave_copy: bool = True
+    days_before_pruning_saves: int = 0
+    save_cleanup_dry_run: bool = True
     enable_sounds: bool = True
     info_volume: float = 0.1
     error_volume: float = 0.5
