@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
@@ -8,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+import toml
 from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
 
 from globals import CONFIG_FILE_NAME
@@ -63,21 +63,20 @@ class QuicksaveConfig:
 class ConfigLoader:
     """Class for loading and saving the quicksave configuration."""
 
-    CONFIG_FILE_NAME = "quicksave.json"
     MAX_RETRIES = 3
     RETRY_DELAY = 0.1
 
     @classmethod
     def load(cls) -> QuicksaveConfig:
-        """Load the configuration from the JSON file or create a new one."""
+        """Load the configuration from the TOML file or create a new one."""
         for attempt in range(cls.MAX_RETRIES):
             try:
-                if not os.path.exists(cls.CONFIG_FILE_NAME):
+                if not os.path.exists(CONFIG_FILE_NAME):
                     return cls._create_default_config()
-                with open(cls.CONFIG_FILE_NAME) as f:
-                    config_data = json.load(f)
+                with open(CONFIG_FILE_NAME) as f:
+                    config_data = toml.load(f)
                 return cls._process_config(config_data)
-            except json.JSONDecodeError:
+            except toml.TomlDecodeError:
                 if attempt < cls.MAX_RETRIES - 1:
                     time.sleep(cls.RETRY_DELAY)
                 else:
@@ -85,7 +84,7 @@ class ConfigLoader:
 
     @classmethod
     def reload(cls, current_config: QuicksaveConfig, logger: logging.Logger) -> QuicksaveConfig:
-        """Reload the configuration from the JSON file."""
+        """Reload the configuration from the TOML file."""
         try:
             new_config = cls.load()
             if current_config.debug_log != new_config.debug_log:
@@ -141,8 +140,8 @@ class ConfigLoader:
     def _save_config(cls, config: QuicksaveConfig) -> None:
         config_dict = {k: v for k, v in config.__dict__.items() if k != "extra_config"}
         config_dict |= config.extra_config
-        with open(cls.CONFIG_FILE_NAME, "w") as f:
-            json.dump(config_dict, f, indent=2)
+        with open(CONFIG_FILE_NAME, "w") as f:
+            toml.dump(config_dict, f)
 
 
 class SaveType(Enum):

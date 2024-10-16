@@ -2,4 +2,4 @@ __pycache__
 .DS_Store
 *.lnk
 build/
-quicksave.json
+config.toml

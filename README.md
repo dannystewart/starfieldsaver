@@ -4,7 +4,7 @@ A utility to automatically quicksave in Starfield on a specified interval, as we
 
 ## Configuration
 
-Many settings are configurable via the `quicksave.json` config file:
+Many settings are configurable via the `config.toml` config file:
 
 - `save_directory`: Directory where save files are stored.
 - `process_name`: Name of the game process to monitor (without extension).
