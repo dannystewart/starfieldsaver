@@ -14,10 +14,9 @@ import win32process  # type: ignore
 from pynput.keyboard import Controller, Key
 from watchdog.observers import Observer
 
-from config_loader import ConfigLoader, SaveType
+from config_loader import ConfigFileHandler, ConfigLoader, SaveFileHandler, SaveType
 from dsutil.files import copy_file, list_files
 from dsutil.log import LocalLogger
-from file_watchers import ConfigFileHandler, SaveFileHandler
 from globals import TZ
 from save_cleaner import SaveCleaner
 from sound_player import SoundPlayer
