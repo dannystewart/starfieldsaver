@@ -137,7 +137,7 @@ class QuicksaveUtility:
             return
 
         # If this was a scheduled interval save, treat it as automatic
-        if self.is_scheduled_save:
+        if save_type == SaveType.QUICKSAVE and self.is_scheduled_save:
             self.logger.info(
                 "Copying new scheduled quicksave to regular save: %s", os.path.basename(save_path)
             )
@@ -181,7 +181,7 @@ class QuicksaveUtility:
         destination = os.path.join(self.config.save_directory, new_filename)
 
         try:
-            copy_file(source, destination)
+            copy_file(source, destination, show_output=False)
             self.logger.info(
                 "Copied most recent %s%s to %s.",
                 "scheduled " if scheduled else "",
