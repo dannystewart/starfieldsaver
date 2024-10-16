@@ -5,7 +5,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import toml
 from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
@@ -39,9 +39,9 @@ class QuicksaveConfig:
 
     save_directory: str
     process_name: str = "Starfield"
-    check_interval: float = 10.0
+    check_interval: float = 10
     quicksave_save: bool = True
-    quicksave_interval: float = 240.0
+    quicksave_interval: float = 240
     quicksave_copy: bool = True
     days_before_pruning_saves: int = 0
     save_cleanup_dry_run: bool = True
@@ -51,6 +51,15 @@ class QuicksaveConfig:
     color_log: bool = True
     debug_log: bool = False
     extra_config: dict[str, Any] = field(default_factory=dict)
+
+    # Define the structure of the TOML file
+    config_structure: ClassVar[dict[str, list[str]]] = {
+        "paths": ["save_directory", "process_name"],
+        "saves": ["check_interval", "quicksave_save", "quicksave_interval", "quicksave_copy"],
+        "cleanup": ["days_before_pruning_saves", "save_cleanup_dry_run"],
+        "sounds": ["enable_sounds", "info_volume", "error_volume"],
+        "logging": ["color_log", "debug_log"],
+    }
 
     def __post_init__(self):
         self.extra_config = {
@@ -108,11 +117,19 @@ class ConfigLoader:
 
     @classmethod
     def _process_config(cls, config_data: dict[str, Any]) -> QuicksaveConfig:
+        # Flatten the sectioned config
+        flat_config = {}
+        for section, values in config_data.items():
+            if section in QuicksaveConfig.config_structure:
+                flat_config |= values
+            else:
+                flat_config[section] = values
+
         known_attrs = {
-            k: config_data.pop(k) for k in QuicksaveConfig.__annotations__ if k in config_data
+            k: flat_config.pop(k) for k in QuicksaveConfig.__annotations__ if k in flat_config
         }
         config = QuicksaveConfig(**known_attrs)
-        config.extra_config = config_data
+        config.extra_config = flat_config
 
         # Check for missing attributes and add them with default values
         default_config = QuicksaveConfig(save_directory=config.save_directory)
@@ -128,6 +145,19 @@ class ConfigLoader:
         return config
 
     @classmethod
+    def _save_config(cls, config: QuicksaveConfig) -> None:
+        config_dict = {
+            section: {k: getattr(config, k) for k in keys}
+            for section, keys in QuicksaveConfig.config_structure.items()
+        }
+        # Add any extra config items to a new section
+        if config.extra_config:
+            config_dict["extra"] = config.extra_config
+
+        with open(cls.CONFIG_FILE_NAME, "w") as f:
+            toml.dump(config_dict, f)
+
+    @classmethod
     def _create_default_config(cls) -> QuicksaveConfig:
         quicksave_folder = os.path.join(
             os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
@@ -135,13 +165,6 @@ class ConfigLoader:
         config = QuicksaveConfig(quicksave_folder)
         cls._save_config(config)
         return config
-
-    @classmethod
-    def _save_config(cls, config: QuicksaveConfig) -> None:
-        config_dict = {k: v for k, v in config.__dict__.items() if k != "extra_config"}
-        config_dict |= config.extra_config
-        with open(CONFIG_FILE_NAME, "w") as f:
-            toml.dump(config_dict, f)
 
 
 class SaveType(Enum):
