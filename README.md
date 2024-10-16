@@ -1,7 +1,21 @@
-# Starfield Quicksave Backup
+# Starfield Saver
 
-A utility to create backups of Starfield quicksave files. All credit to [Andazeus](https://www.nexusmods.com/starfield/mods/223) for the original script.
+A utility to automatically quicksave in Starfield on a specified interval, as well as back them up by duplicating them to regular saves so they aren't overwritten by subsequent quicksaves. Also supports autosaves.
 
-Just run the script and it'll begin backing up quicksaves according to the configured variables at the top. It'll check for a Steam Cloud save path first, then fall back to Documents, then fall back to OneDrive.
+## Configuration
 
-The script supports any EXE with `Starfield` in the name, in case you've renamed your Starfield EXE to something else (e.g. if you're using SFSE as `Starfield.exe` so you can still launch it via Steam). Just make sure you keep `Starfield` in the name and it will still work.
+Many settings are configurable via the `quicksave.json` config file:
+
+- `save_directory`: Directory where save files are stored.
+- `process_name`: Name of the game process to monitor (without extension).
+- `check_interval`: Time between checks (in seconds).
+- `quicksave_save`: Whether to create quicksaves.
+- `quicksave_interval`: Time between quicksaves (in seconds).
+- `quicksave_copy`: Whether to copy quicksaves to regular saves.
+- `days_before_pruning_saves`: Number of days before pruning saves to one per day (0 to keep all).
+- `save_cleanup_dry_run`: Whether to perform a dry run of save cleanup.
+- `enable_sounds`: Whether to play sounds on events.
+- `info_volume`: Volume for info sounds (0.0 to 1.0).
+- `error_volume`: Volume for error sounds (0.0 to 1.0).
+- `color_log`: Whether to use color in logging.
+- `debug_log`: Whether to enable debug logging.

@@ -3,10 +3,10 @@
 """
 Renumber Starfield saves beginning with the specified save number.
 
-This script will renumber Starfield save files (*.sfs) in the specified directory, starting with the
-given save number. Everything prior to this number will be left alone. The script will sort the save
-files by number, then renumber them sequentially starting from the given number. The script will
-skip any files that do not match the expected format or character ID.
+This single-use utility script will renumber Starfield save files (*.sfs) in the specified
+directory, starting with the given save number. Everything prior to this number will be left alone.
+The script will sort the save files by number, then renumber them sequentially starting from the
+given number. The script will skip any files that do not match the expected format or character ID.
 
 Usage: python save_renumberer.py <starting_save_number> [--dry-run]
 """

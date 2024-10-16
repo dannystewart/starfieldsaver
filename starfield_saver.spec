@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['starfield_quicksave.py'],
+    ['starfield_saver.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='starfield_quicksave',
+    name='starfield_saver',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
