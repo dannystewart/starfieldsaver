@@ -8,7 +8,7 @@ from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHa
 from globals import CONFIG_FILE_NAME
 
 if TYPE_CHECKING:
-    from starfield_saver import QuicksaveUtility
+    from quicksave_utility import QuicksaveUtility
 
 
 class ConfigFileHandler(FileSystemEventHandler):

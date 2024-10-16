@@ -344,7 +344,3 @@ class QuicksaveUtility:
             self.reminder_interval += self.reminder_increment
             formatted_time = self._format_timedelta(self.reminder_interval)
             self.logger.debug("Reminder interval increased to %s.", formatted_time)
-
-
-if __name__ == "__main__":
-    QuicksaveUtility().run()

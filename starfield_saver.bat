@@ -1,2 +1,2 @@
 @echo off
-poetry run python .\starfield_saver.py %*
+poetry run python .\main.py %*
