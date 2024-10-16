@@ -150,15 +150,16 @@ class QuicksaveUtility:
 
         if self.last_quicksave_time is None or save_time > self.last_quicksave_time:
             if save_type == SaveType.QUICKSAVE:
-                self.logger.info(
-                    "Resetting interval timer due to user-initiated quicksave: %s",
-                    os.path.basename(save_path),
-                )
+                reset_reason = "user-initiated quicksave"
                 self.last_quicksave_time = save_time
                 self.copy_save_to_new_file(save_path, auto=False)
             elif save_type == SaveType.AUTOSAVE:
+                reset_reason = "game autosave"
                 self.logger.info("New autosave detected: %s", os.path.basename(save_path))
                 self.copy_save_to_new_file(save_path, auto=True)
+            self.logger.info(
+                "Resetting interval timer due to %s: %s", reset_reason, os.path.basename(save_path)
+            )
 
     def copy_save_to_new_file(self, source: str, auto: bool, scheduled: bool = False) -> bool:
         """Copy the save to a new file with a name matching the game's format."""
