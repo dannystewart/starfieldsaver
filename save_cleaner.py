@@ -28,8 +28,6 @@ class SaveCleaner:
 
     def cleanup_saves_if_scheduled(self) -> None:
         """Run save cleanup if it's time."""
-        self.logger.debug("Checking if save cleanup is scheduled...")
-
         current_time = datetime.now(tz=TZ)
         if current_time - self.last_cleanup_time >= self.cleanup_interval:
             self.cleanup_old_saves()
@@ -119,18 +117,17 @@ class SaveCleaner:
         for date, date_saves in saves_by_date.items():
             date_saves.sort(key=lambda x: x.stat().st_mtime, reverse=True)
             saves_to_keep.add(date_saves[0])
-            self.logger.info(
+            self.logger.debug(
                 "Preserving save from %s (before cutoff): %s", date, date_saves[0].name
             )
 
         for save_file, _ in saves:
             if save_file not in saves_to_keep:
                 files_to_delete.append(save_file)
-                self.logger.warning(
-                    "%s old save: %s",
-                    "Would delete" if self.config.save_cleanup_dry_run else "Deleting",
-                    save_file.name,
-                )
+                if self.config.save_cleanup_dry_run:
+                    self.logger.debug("Would delete old save: %s", save_file.name)
+                else:
+                    self.logger.warning("Deleted old save: %s",save_file.name)
 
         return files_to_delete
 

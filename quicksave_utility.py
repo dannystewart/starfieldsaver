@@ -38,7 +38,7 @@ class QuicksaveUtility:
         self.save_cleaner: SaveCleaner = SaveCleaner(self.config, self.logger)
 
         # Variables to track save information
-        self.last_quicksave_time: datetime | None = None
+        self.last_save_time: datetime | None = None
         self.last_copied_save_name: str | None = None
         self.is_scheduled_save: bool = False
 
@@ -110,15 +110,15 @@ class QuicksaveUtility:
     def save_on_interval(self) -> None:
         """Create a new quicksave by sending F5 to the game."""
         current_time = datetime.now(tz=TZ)
-        if self.last_quicksave_time is None or (
-            current_time - self.last_quicksave_time
+        if self.last_save_time is None or (
+            current_time - self.last_save_time
         ) >= timedelta(seconds=self.config.quicksave_interval):
             self.is_scheduled_save = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
             self.keyboard.release(Key.f5)
-            self.logger.info("Created quicksave at scheduled interval time.")
-            self.last_quicksave_time = current_time
+            self.logger.info("Quicksaved on schedule.")
+            self.last_save_time = current_time
 
     @staticmethod
     def identify_save_type(save_path: str) -> SaveType:
@@ -147,18 +147,12 @@ class QuicksaveUtility:
 
         save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
 
-        if self.last_quicksave_time is None or save_time > self.last_quicksave_time:
+        if self.last_save_time is None or save_time > self.last_save_time:
             if save_type == SaveType.QUICKSAVE:
-                reset_reason = "user-initiated quicksave"
-                self.last_quicksave_time = save_time
                 self.copy_save_to_new_file(save_path, auto=False)
             elif save_type == SaveType.AUTOSAVE:
-                reset_reason = "game autosave"
-                self.logger.info("New autosave detected: %s", os.path.basename(save_path))
+                self.logger.debug("New autosave: %s", os.path.basename(save_path))
                 self.copy_save_to_new_file(save_path, auto=True)
-            self.logger.info(
-                "Resetting interval timer due to %s: %s", reset_reason, os.path.basename(save_path)
-            )
 
     def copy_save_to_new_file(self, source: str, auto: bool, scheduled: bool = False) -> bool:
         """Copy the save to a new file with a name matching the game's format."""
@@ -181,23 +175,34 @@ class QuicksaveUtility:
         destination = os.path.join(self.config.save_directory, new_filename)
 
         try:
-            copy_file(source, destination, show_output=False)
-            self.logger.info(
-                "Copied most recent %s%s to %s.",
-                "scheduled " if scheduled else "",
-                self.identify_save_type(source),
-                os.path.basename(destination),
-            )
-            if auto:
-                self.sound.play_success()
-            else:
-                self.sound.play_notification()
-            self.last_copied_save_name = source
-            return True
+            return self._perform_file_copy(source, destination, scheduled, auto)
         except Exception as e:
             self.logger.error("Failed to copy file: %s", str(e))
             self.sound.play_error()
             return False
+
+    def _perform_file_copy(self, source: str, destination: str, scheduled: bool, auto: bool) -> bool:
+        copy_file(source, destination, show_output=False)
+        self.logger.info(
+            "Copied most recent %s%s to %s.",
+            "scheduled " if scheduled else "",
+            self.identify_save_type(source),
+            os.path.basename(destination),
+        )
+        if auto:
+            self.sound.play_success()
+        else:
+            self.sound.play_notification()
+
+        save_time = datetime.fromtimestamp(os.path.getmtime(source), tz=TZ)
+        self.last_copied_save_name = source
+        self.last_save_time = save_time
+        self.logger.debug(
+            "Reset interval timer due to %s save: %s",
+            "automatic" if auto else "manual",
+            os.path.basename(save_path),
+        )
+        return True
 
     def _get_next_save_id(self, save_files: list[str]) -> tuple[int, int]:
         """Get the next available save ID. Returns highest existing and next IDs."""
