@@ -110,9 +110,9 @@ class QuicksaveUtility:
     def save_on_interval(self) -> None:
         """Create a new quicksave by sending F5 to the game."""
         current_time = datetime.now(tz=TZ)
-        if self.last_save_time is None or (
-            current_time - self.last_save_time
-        ) >= timedelta(seconds=self.config.quicksave_interval):
+        if self.last_save_time is None or (current_time - self.last_save_time) >= timedelta(
+            seconds=self.config.quicksave_interval
+        ):
             self.is_scheduled_save = True
             self.keyboard.press(Key.f5)
             time.sleep(0.2)
@@ -171,7 +171,7 @@ class QuicksaveUtility:
             next_save_id,
         )
 
-        new_filename = re.sub(r"^(Quicksave0|Autosave)", f"Save{next_save_id}", source_filename)
+        new_filename = re.sub(r"^(Quicksave0|Autosave\d+)", f"Save{next_save_id}", source_filename)
         destination = os.path.join(self.config.save_directory, new_filename)
 
         try:
@@ -181,7 +181,9 @@ class QuicksaveUtility:
             self.sound.play_error()
             return False
 
-    def _perform_file_copy(self, source: str, destination: str, scheduled: bool, auto: bool) -> bool:
+    def _perform_file_copy(
+        self, source: str, destination: str, scheduled: bool, auto: bool
+    ) -> bool:
         copy_file(source, destination, show_output=False)
         self.logger.info(
             "Copied most recent %s%s to %s.",
@@ -200,15 +202,16 @@ class QuicksaveUtility:
         self.logger.debug(
             "Reset interval timer due to %s save: %s",
             "automatic" if auto else "manual",
-            os.path.basename(save_path),
+            os.path.basename(source),
         )
         return True
 
     def _get_next_save_id(self, save_files: list[str]) -> tuple[int, int]:
         """Get the next available save ID. Returns highest existing and next IDs."""
         save_ids = []
+
         for f in save_files:
-            if match := re.match(r"Save(\d{1,4})_[A-F0-9]{8}", os.path.basename(f)):
+            if match := re.match(r"Save(\d+)_[A-F0-9]{8}", os.path.basename(f)):
                 try:
                     save_id = int(match[1])
                     save_ids.append(save_id)
@@ -216,22 +219,27 @@ class QuicksaveUtility:
                     self.logger.error("Failed to parse save ID for file: %s", f)
 
         if not save_ids:
-            self.logger.warning("No valid save IDs found, starting from 0")
+            self.logger.warning("No valid save IDs found, starting from 1")
             return 0, 1
 
         highest_save_id = max(save_ids)
+        next_save_id = highest_save_id + 1
 
-        # Determine the number of digits in the highest save ID
-        digit_count = len(str(highest_save_id))
+        # Protect against unexpected digit count increases
+        expected_digits = len(str(highest_save_id))
+        if (
+            len(str(next_save_id)) > expected_digits
+            and str(highest_save_id) != "9" * expected_digits
+        ):
+            self.logger.warning("Unexpected digit increase. Adjusting save ID.")
+            next_save_id = int("1" + "0" * (expected_digits - 1))
 
-        # Calculate the maximum possible ID for the current digit count
-        max_id_for_digits = 10**digit_count - 1
-
-        # If we've reached the maximum for the current digit count, start over
-        if highest_save_id == max_id_for_digits:
-            next_save_id = 10 ** (digit_count - 1)
-        else:
-            next_save_id = highest_save_id + 1
+        self.logger.debug(
+            "Highest save ID: %d. Next save ID: %d. Expected digits: %d.",
+            highest_save_id,
+            next_save_id,
+            expected_digits,
+        )
 
         return highest_save_id, next_save_id
 
