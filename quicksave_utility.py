@@ -52,11 +52,11 @@ class QuicksaveUtility:
         self.last_logging_check = datetime.now(tz=TZ)
 
         # How often to log reminder that checks are still on hold
-        self.reminder_default = timedelta(seconds=600)  # 10 minutes
+        self.reminder_default = timedelta(seconds=60)  # 1 minute
         self.reminder_interval = self.reminder_default
 
         # How much to increment the reminder time by each time
-        self.reminder_increment = timedelta(seconds=300)  # 5 minutes
+        self.reminder_increment = timedelta(seconds=60)  # 1 minute
 
         # Maximum time in minutes before the reminder stops incrementing
         self.reminder_max_minutes = 30
@@ -219,7 +219,7 @@ class QuicksaveUtility:
                     self.logger.error("Failed to parse save ID for file: %s", f)
 
         if not save_ids:
-            self.logger.warning("No valid save IDs found, starting from 1")
+            self.logger.warning("No valid save IDs found, starting from 1.")
             return 0, 1
 
         highest_save_id = max(save_ids)
@@ -233,13 +233,6 @@ class QuicksaveUtility:
         ):
             self.logger.warning("Unexpected digit increase. Adjusting save ID.")
             next_save_id = int("1" + "0" * (expected_digits - 1))
-
-        self.logger.debug(
-            "Highest save ID: %d. Next save ID: %d. Expected digits: %d.",
-            highest_save_id,
-            next_save_id,
-            expected_digits,
-        )
 
         return highest_save_id, next_save_id
 
@@ -356,4 +349,4 @@ class QuicksaveUtility:
         if self.reminder_interval < timedelta(minutes=self.reminder_max_minutes):
             self.reminder_interval += self.reminder_increment
             formatted_time = self._format_timedelta(self.reminder_interval)
-            self.logger.debug("Reminder interval increased to %s.", formatted_time)
+            self.logger.debug("Next inactivity reminder in %s.", formatted_time)
