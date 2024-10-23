@@ -127,7 +127,7 @@ class SaveCleaner:
                 if self.config.save_cleanup_dry_run:
                     self.logger.debug("Would delete old save: %s", save_file.name)
                 else:
-                    self.logger.warning("Deleted old save: %s",save_file.name)
+                    self.logger.warning("Deleted old save: %s", save_file.name)
 
         return files_to_delete
 
