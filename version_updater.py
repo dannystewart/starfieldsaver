@@ -7,7 +7,7 @@ import requests
 
 from dsutil.log import LocalLogger
 
-CURRENT_VERSION = "1.5.0"
+CURRENT_VERSION = "1.5.1"
 VERSION_URL = "https://gitlab.dannystewart.com/danny/starfield-saver/-/raw/main/version.json"
 
 
