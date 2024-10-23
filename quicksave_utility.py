@@ -27,10 +27,9 @@ class QuicksaveUtility:
 
     def __init__(self):
         self.config: QuicksaveConfig = ConfigLoader.load()
-
-        level = "debug" if self.config.debug_log else "info"
-        color = self.config.color_log
-        self.logger: Logger = LocalLogger.setup_logger("quicksave", level=level, use_color=color)
+        self.logger: Logger = LocalLogger.setup_logger(
+            "quicksave", level="debug" if self.config.debug_log else "info"
+        )
 
         self.keyboard = Controller()
         self.sound = SoundPlayer(self.logger)

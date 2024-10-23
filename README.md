@@ -17,5 +17,4 @@ Many settings are configurable via the `config.toml` config file:
 - `enable_sounds`: Whether to play sounds on events.
 - `info_volume`: Volume for info sounds (0.0 to 1.0).
 - `error_volume`: Volume for error sounds (0.0 to 1.0).
-- `color_log`: Whether to use color in logging.
 - `debug_log`: Whether to enable debug logging.

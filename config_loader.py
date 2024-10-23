@@ -33,7 +33,6 @@ class QuicksaveConfig:
         enable_sounds: Whether to play sounds on events.
         info_volume: Volume for info sounds (0.0 to 1.0).
         error_volume: Volume for error sounds (0.0 to 1.0).
-        color_log: Whether to use color in logging.
         debug_log: Whether to enable debug logging.
     """
 
@@ -48,7 +47,6 @@ class QuicksaveConfig:
     enable_sounds: bool = True
     info_volume: float = 0.1
     error_volume: float = 0.5
-    color_log: bool = True
     debug_log: bool = False
     extra_config: dict[str, Any] = field(default_factory=dict)
 
@@ -58,7 +56,7 @@ class QuicksaveConfig:
         "saves": ["check_interval", "quicksave_save", "quicksave_interval", "quicksave_copy"],
         "cleanup": ["days_before_pruning_saves", "save_cleanup_dry_run"],
         "sounds": ["enable_sounds", "info_volume", "error_volume"],
-        "logging": ["color_log", "debug_log"],
+        "logging": ["debug_log"],
     }
 
     def __post_init__(self):
