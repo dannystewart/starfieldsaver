@@ -154,7 +154,7 @@ class ConfigLoader:
         if config.extra_config:
             config_dict["extra"] = config.extra_config
 
-        with open(cls.CONFIG_FILE_NAME, "w") as f:
+        with open(CONFIG_FILE_NAME, "w") as f:
             toml.dump(config_dict, f)
 
     @classmethod
