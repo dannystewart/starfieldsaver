@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from dsutil.errors import configure_traceback
 from dsutil.log import LocalLogger
 from quicksave_utility import QuicksaveUtility
 from version_updater import VersionUpdater
+
+configure_traceback()
 
 logger = LocalLogger.setup_logger()
 updater = VersionUpdater()
