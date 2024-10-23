@@ -10,6 +10,9 @@ from dsutil.log import LocalLogger
 CURRENT_VERSION = "1.5.1"
 VERSION_URL = "https://gitlab.dannystewart.com/danny/starfield-saver/-/raw/main/version.json"
 
+OLD_FILENAME = "starfield_saver_old.exe"
+NEW_FILENAME = "starfield_saver_new.exe"
+
 
 class VersionUpdater:
     """Check for updates and prompt the user to update if a new version is available."""
@@ -30,7 +33,9 @@ class VersionUpdater:
                 if input("Do you want to update? (y/n): ").lower() == "y":
                     self.update_app(download_url)
             else:
-                self.logger.info("You have the latest version.")
+                self.logger.info(
+                    "Starting Starfield Saver v%s. You are on the latest version.", CURRENT_VERSION
+                )
         except Exception as e:
             self.logger.warning("Failed to check for updates: %s", str(e))
 
@@ -38,15 +43,31 @@ class VersionUpdater:
         """Download the new version and replace the current executable."""
         try:
             response = requests.get(url)
-            with open("starfield_saver_new.exe", "wb") as f:
+            with open(NEW_FILENAME, "wb") as f:
                 f.write(response.content)
 
-            # Replace the current executable
-            os.rename(sys.executable, "starfield_saver_old.exe")
-            os.rename("starfield_saver_new.exe", sys.executable)
+            # Create a batch file to handle the update
+            with open("update.bat", "w") as batch_file:
+                batch_file.write(f"""
+@echo off
+timeout /t 1 /nobreak >nul
+del "{sys.executable}"
+move "{NEW_FILENAME}" "{sys.executable}"
+start "" "{sys.executable}"
+del "%~f0"
+                """)
 
             self.logger.info("Update successful! Restarting application...")
-            subprocess.Popen([sys.executable] + sys.argv)
+            subprocess.Popen("update.bat", shell=True)
             sys.exit()
         except Exception as e:
             self.logger.error("Update failed: %s", str(e))
+
+    def cleanup_old_version(self) -> None:
+        """Remove the old version of the executable if it exists."""
+        if os.path.exists(OLD_FILENAME):
+            try:
+                os.remove(OLD_FILENAME)
+                self.logger.info("Removed old version: %s", OLD_FILENAME)
+            except Exception as e:
+                self.logger.error("Failed to remove old version: %s", str(e))
