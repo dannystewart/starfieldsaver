@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import sys
 import time
-import winsound
 from typing import TYPE_CHECKING
+
+if sys.platform == "win32":
+    import winsound
 
 if TYPE_CHECKING:
     import logging
@@ -81,4 +84,6 @@ class SoundPlayer:
     @staticmethod
     def winsound_beep(freq: int, duration: float) -> None:
         """Play a beep using winsound."""
+        if sys.platform != "win32":
+            return
         winsound.Beep(freq, int(duration * 1000))
