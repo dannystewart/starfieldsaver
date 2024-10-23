@@ -12,7 +12,7 @@ numpy = "^2.1.2"
 psutil = "^6.0.0"
 pygame = "^2.6.1"
 pynput = "^1.7.7"
-pywin32 = "^307"
+pywin32 = { version = "^307", platform = "win32" }
 requests = "^2.32.3"
 send2trash = "^1.8.0"
 termcolor = "^2.4.0"
