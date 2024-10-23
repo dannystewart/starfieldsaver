@@ -35,8 +35,8 @@ class SaveCleaner:
 
     def cleanup_old_saves(self) -> None:
         """Clean up old saves, keeping one per day beyond the cutoff date."""
-        if self.config.days_before_pruning_saves == 0:
-            self.logger.info("Save cleanup disabled (days_before_pruning_saves is 0).")
+        if self.config.prune_saves_older_than == 0:
+            self.logger.info("Save cleanup disabled (prune_saves_older_than is 0).")
             return
 
         self.logger.info("Starting save cleanup process...")
@@ -55,7 +55,7 @@ class SaveCleaner:
         self.logger.info("Total saves found: %s", len(save_files))
 
         most_recent_save_time = datetime.fromtimestamp(save_files[0].stat().st_mtime, tz=TZ)
-        cutoff_date = most_recent_save_time - timedelta(days=self.config.days_before_pruning_saves)
+        cutoff_date = most_recent_save_time - timedelta(days=self.config.prune_saves_older_than)
         self.logger.info("Cutoff date for save deletion: %s", cutoff_date)
 
         # Group saves by character
@@ -76,10 +76,10 @@ class SaveCleaner:
         self.logger.info("Total saves to keep: %s", len(save_files) - len(files_to_delete))
 
         successful, failed = delete_files(
-            files_to_delete, show_output=False, dry_run=self.config.save_cleanup_dry_run
+            files_to_delete, show_output=False, dry_run=self.config.dry_run
         )
 
-        if self.config.save_cleanup_dry_run:
+        if self.config.dry_run:
             self.logger.info(
                 "Dry run: would delete %s old saves across all characters.", successful
             )
@@ -124,7 +124,7 @@ class SaveCleaner:
         for save_file, _ in saves:
             if save_file not in saves_to_keep:
                 files_to_delete.append(save_file)
-                if self.config.save_cleanup_dry_run:
+                if self.config.dry_run:
                     self.logger.debug("Would delete old save: %s", save_file.name)
                 else:
                     self.logger.warning("Deleted old save: %s", save_file.name)

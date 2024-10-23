@@ -24,12 +24,12 @@ class QuicksaveConfig:
     Attributes:
         save_directory: Directory where save files are stored.
         process_name: Name of the game process to monitor (without extension).
-        check_interval: Time between checks (in seconds).
-        quicksave_save: Whether to create quicksaves.
-        quicksave_interval: Time between quicksaves (in seconds).
-        quicksave_copy: Whether to copy quicksaves to regular saves.
-        days_before_pruning_saves: Number of days before pruning saves to one per day (0 to keep all).
-        save_cleanup_dry_run: Whether to perform a dry run of save cleanup.
+        status_check_interval: Time between status checks (in seconds).
+        quicksave_every: Time between quicksaves (in seconds).
+        enable_quicksave_on_interval: Whether to quicksave on the set interval.
+        enable_copy_to_regular_save: Whether to copy quicksaves to regular saves.
+        prune_saves_older_than: Number of days before pruning saves to one per day (0 to keep all).
+        dry_run: Whether to perform a dry run of save cleanup.
         enable_sounds: Whether to play sounds on events.
         info_volume: Volume for info sounds (0.0 to 1.0).
         error_volume: Volume for error sounds (0.0 to 1.0).
@@ -38,12 +38,12 @@ class QuicksaveConfig:
 
     save_directory: str
     process_name: str = "Starfield"
-    check_interval: float = 10
-    quicksave_save: bool = True
-    quicksave_interval: float = 240
-    quicksave_copy: bool = True
-    days_before_pruning_saves: int = 0
-    save_cleanup_dry_run: bool = True
+    status_check_interval: float = 10
+    quicksave_every: float = 240
+    enable_quicksave_on_interval: bool = True
+    enable_copy_to_regular_save: bool = True
+    prune_saves_older_than: int = 0
+    dry_run: bool = True
     enable_sounds: bool = True
     info_volume: float = 0.1
     error_volume: float = 0.5
@@ -53,8 +53,13 @@ class QuicksaveConfig:
     # Define the structure of the TOML file
     config_structure: ClassVar[dict[str, list[str]]] = {
         "paths": ["save_directory", "process_name"],
-        "saves": ["check_interval", "quicksave_save", "quicksave_interval", "quicksave_copy"],
-        "cleanup": ["days_before_pruning_saves", "save_cleanup_dry_run"],
+        "saves": [
+            "status_check_interval",
+            "quicksave_every",
+            "enable_quicksave_on_interval",
+            "enable_copy_to_regular_save",
+        ],
+        "cleanup": ["prune_saves_older_than", "dry_run"],
         "sounds": ["enable_sounds", "info_volume", "error_volume"],
         "logging": ["debug_log"],
     }
@@ -203,7 +208,7 @@ class SaveFileHandler(FileSystemEventHandler):
         )
 
         if not event.is_directory and event.dest_path.endswith(".sfs"):
-            if self.saver.config.quicksave_copy:
+            if self.saver.config.enable_copy_to_regular_save:
                 self.saver.new_game_save_detected(event.dest_path)
         else:
             self.saver.logger.debug("Moved file is not a game save, ignoring.")

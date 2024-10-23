@@ -65,7 +65,7 @@ class QuicksaveUtility:
     def _main_loop(self) -> None:
         while True:
             try:
-                time.sleep(self.config.check_interval)
+                time.sleep(self.config.status_check_interval)
                 self.monitor.check_logging_status()
 
                 if not self.monitor.is_game_running():
@@ -74,7 +74,7 @@ class QuicksaveUtility:
                 if not self.monitor.is_game_in_foreground():
                     continue
 
-                if self.config.quicksave_save:
+                if self.config.enable_quicksave_on_interval:
                     self.save_on_interval()
 
                 self.save_cleaner.cleanup_saves_if_scheduled()
@@ -88,7 +88,7 @@ class QuicksaveUtility:
         """Create a new quicksave by sending F5 to the game."""
         current_time = datetime.now(tz=TZ)
         if self.last_save_time is None or (current_time - self.last_save_time) >= timedelta(
-            seconds=self.config.quicksave_interval
+            seconds=self.config.quicksave_every
         ):
             self.is_scheduled_save = True
             self.keyboard.press(Key.f5)
@@ -222,10 +222,10 @@ class QuicksaveUtility:
     def _log_current_config(self) -> None:
         self.logger.debug(
             "Loaded config: check every %ss, %s%s, sounds %s",
-            round(self.config.check_interval),
-            f"save every {round(self.config.quicksave_interval)}s"
-            if self.config.quicksave_save
+            round(self.config.status_check_interval),
+            f"save every {round(self.config.quicksave_every)}s"
+            if self.config.enable_quicksave_on_interval
             else "save disabled",
-            "" if self.config.quicksave_copy else ", copy disabled",
+            "" if self.config.enable_copy_to_regular_save else ", copy disabled",
             "enabled" if self.config.enable_sounds else "disabled",
         )
