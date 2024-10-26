@@ -35,8 +35,16 @@ class SaveCleaner:
 
     def cleanup_old_saves(self) -> None:
         """Clean up old saves, keeping one per day beyond the cutoff date."""
+        if not self.config.enable_save_cleanup:
+            self.logger.info(
+                "Save cleanup not enabled. Set 'enable_save_cleanup' to 'true' to enable."
+            )
+            return
+
         if self.config.prune_saves_older_than == 0:
-            self.logger.info("Save cleanup disabled (prune_saves_older_than is 0).")
+            self.logger.warning(
+                "Save cleanup enabled but 'prune_saves_older_than' is set to 0 days."
+            )
             return
 
         self.logger.info("Starting save cleanup process...")

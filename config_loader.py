@@ -28,6 +28,7 @@ class QuicksaveConfig:
         quicksave_every: Time between quicksaves (in seconds).
         enable_quicksave_on_interval: Whether to quicksave on the set interval.
         enable_copy_to_regular_save: Whether to copy quicksaves to regular saves.
+        enable_save_cleanup: Whether to enable save cleanup.
         prune_saves_older_than: Number of days before pruning saves to one per day (0 to keep all).
         dry_run: Whether to perform a dry run of save cleanup.
         enable_sounds: Whether to play sounds on events.
@@ -42,6 +43,7 @@ class QuicksaveConfig:
     quicksave_every: float = 240
     enable_quicksave_on_interval: bool = True
     enable_copy_to_regular_save: bool = True
+    enable_save_cleanup: bool = False
     prune_saves_older_than: int = 0
     dry_run: bool = True
     enable_sounds: bool = True
@@ -59,7 +61,7 @@ class QuicksaveConfig:
             "enable_quicksave_on_interval",
             "enable_copy_to_regular_save",
         ],
-        "cleanup": ["prune_saves_older_than", "dry_run"],
+        "cleanup": ["enable_save_cleanup", "prune_saves_older_than", "dry_run"],
         "sounds": ["enable_sounds", "info_volume", "error_volume"],
         "logging": ["debug_log"],
     }
