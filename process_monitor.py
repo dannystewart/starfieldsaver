@@ -29,6 +29,7 @@ class ProcessMonitor:
         self.logger = quicksave_utility.logger
 
         # Variables to track process information
+        self.game_process: str = self.saver.config.process_name
         self.game_is_running: bool = True
         self.game_in_foreground: bool = True
         self.last_foreground_process: str = ""
@@ -36,6 +37,8 @@ class ProcessMonitor:
         # Variables to track logging
         self.logging_paused = False
         self.last_logging_check = datetime.now(tz=TZ)
+        self.previous_game_running_state: bool = False
+        self.previous_game_foreground_state: bool = False
 
         # How often to log reminder that checks are still on hold
         self.reminder_default = timedelta(seconds=60)  # 1 minute
@@ -52,18 +55,27 @@ class ProcessMonitor:
 
     def is_game_running(self) -> bool:
         """Check if the game process is running."""
-        game_process = f"{self.saver.config.process_name}.exe"
+        # Append .exe to filename if not already present
+        self.game_process = self.saver.config.process_name
+        if not self.saver.config.process_name.endswith(".exe"):
+            self.game_process = f"{self.game_process}.exe"
+
+        # Check for the game process
         is_running = any(
-            process.info["name"].lower() == game_process.lower()
+            process.info["name"].lower() == self.game_process.lower()
             for process in psutil.process_iter(["name"])
         )
 
+        if is_running != self.previous_game_running_state:
+            if is_running:
+                self.logger.info("%s.exe has started.", self.saver.config.process_name)
+            else:
+                self.logger.info("%s.exe has quit.", self.saver.config.process_name)
+            self.previous_game_running_state = is_running
+
         if not is_running:
             if self.game_is_running:
-                self.logger.info(
-                    "Skipping checks while %s.exe is not running.",
-                    self.saver.config.process_name,
-                )
+                self.logger.info("Skipping checks while %s is not running.", self.game_process)
             self.game_is_running = False
         else:
             self.game_is_running = True
@@ -75,13 +87,24 @@ class ProcessMonitor:
         foreground_process = self.get_foreground_process()
         is_active = foreground_process.lower().startswith(self.saver.config.process_name.lower())
 
-        if not is_active:
-            if self.game_in_foreground or foreground_process != self.last_foreground_process:
-                self.logger.info("Skipping checks while %s is in focus.", foreground_process)
-            self.game_in_foreground = False
-            self.last_foreground_process = foreground_process
-        else:
-            self.game_in_foreground = True
+        if is_active != self.previous_game_foreground_state:
+            if is_active:
+                self.logger.info("%s has entered focus.", self.saver.config.process_name)
+            else:
+                self.logger.info(
+                    "%s is no longer in focus (%s now in focus).",
+                    self.saver.config.process_name,
+                    foreground_process,
+                )
+            self.previous_game_foreground_state = is_active
+
+        if not is_active and (
+            self.game_in_foreground or foreground_process != self.last_foreground_process
+        ):
+            self.logger.info("Skipping checks while %s is in focus.", foreground_process)
+
+        self.game_in_foreground = is_active
+        self.last_foreground_process = foreground_process
 
         return is_active
 
@@ -118,17 +141,21 @@ class ProcessMonitor:
     def check_logging_status(self) -> None:
         """Check if logging should be paused or resumed."""
         current_time = datetime.now(tz=TZ)
+
         if self.game_is_running and self.game_in_foreground:
+            if self.logging_paused:
+                self.logger.debug("Resuming checks.")
             self.logging_paused = False
             self.reminder_interval = self.reminder_default
 
         elif not self.logging_paused:
+            self.logger.debug("Pausing checks.")
             self.logging_paused = True
             self.last_logging_check = current_time
             self._increment_reminder_time()
 
         elif current_time - self.last_logging_check > self.reminder_interval:
-            self.logger.info("Still waiting for %s.exe.", self.saver.config.process_name)
+            self.logger.info("Waiting for %s to run.", self.saver.config.process_name)
             self.last_logging_check = current_time
             self._increment_reminder_time()
 
