@@ -22,7 +22,7 @@ watchdog = "^5.0.3"
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.10.0"
-ruff = "^0.6.9"
+ruff = "^0.7.1"
 
 [build-system]
 requires = ["poetry-core"]
