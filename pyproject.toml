@@ -19,6 +19,7 @@ termcolor = "^2.4.0"
 toml = "^0.10.2"
 tzdata = "^2024.2"
 watchdog = "^5.0.3"
+dsutil = {git = "https://gitlab.dannystewart.com/danny/dsutil.git"}
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.10.0"
