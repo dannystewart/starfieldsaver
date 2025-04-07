@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psutil
-from config_loader import ConfigFileHandler, SaveFileHandler
 from polykit.formatters import TZ
 from watchdog.observers import Observer
+
+from starfield_saver.config_loader import ConfigFileHandler, SaveFileHandler
 
 if sys.platform == "win32":
     import win32api  # type: ignore

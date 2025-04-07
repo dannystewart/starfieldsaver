@@ -11,7 +11,7 @@ import toml
 from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
 
 if TYPE_CHECKING:
-    from quicksave_utility import QuicksaveUtility
+    from starfield_saver.quicksave_utility import QuicksaveUtility
 
 CONFIG_FILE_NAME = "config.toml"
 

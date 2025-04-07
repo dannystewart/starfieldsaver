@@ -6,9 +6,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from config_loader import QuicksaveConfig
-from dsutil.files import delete_files, list_files
-from globals import TZ
+from polykit.files import PolyFile
+from polykit.formatters import TZ
+
+from starfield_saver.config_loader import QuicksaveConfig
 
 if TYPE_CHECKING:
     import logging
@@ -49,7 +50,7 @@ class SaveCleaner:
 
         self.logger.info("Starting save cleanup process...")
 
-        save_files = list_files(
+        save_files = PolyFile.list(
             self.config.save_directory,
             extensions=["sfs"],
             sort_key=lambda x: x.stat().st_mtime,
@@ -83,7 +84,7 @@ class SaveCleaner:
         self.logger.info("Total saves to delete: %s", len(files_to_delete))
         self.logger.info("Total saves to keep: %s", len(save_files) - len(files_to_delete))
 
-        successful, failed = delete_files(
+        successful, failed = PolyFile.delete(
             files_to_delete, show_output=False, dry_run=self.config.dry_run
         )
 

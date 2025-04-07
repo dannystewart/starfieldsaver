@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import re
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from config_loader import ConfigLoader, SaveType
 from polykit.files import PolyFile
 from polykit.formatters import TZ
 from polykit.log import PolyLog
-from process_monitor import ProcessMonitor
 from pynput.keyboard import Controller, Key
-from save_cleaner import SaveCleaner
-from sound_player import SoundPlayer
+
+from starfield_saver.config_loader import ConfigLoader, SaveType
+from starfield_saver.process_monitor import ProcessMonitor
+from starfield_saver.save_cleaner import SaveCleaner
+from starfield_saver.sound_player import SoundPlayer
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -52,6 +54,7 @@ class QuicksaveUtility:
             self._main_loop()
         except KeyboardInterrupt:
             self.logger.info("Exiting quicksave utility.")
+            sys.exit(0)
         except Exception as e:
             self.logger.error("An error occurred: %s", str(e))
             self.sound.play_error()

@@ -14,8 +14,8 @@ dependencies = [
     "toml (>=0.10.2,<0.11.0)",
     "tzdata (>=2025.2,<2026.0)",
     "watchdog (>=6.0.0,<7.0.0)",
-    "pywin32 (>=307,<308) ; sys_platform == 'win32'",
-    "polykit (>=0.7.4,<0.8.0)",
+    "pywin32 (>=310,<311) ; sys_platform == \"win32\"",
+    "polykit @ git+https://github.com/dannystewart/polykit.git",
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -26,3 +26,6 @@ pyinstaller = "^6.12.0"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[project.scripts]
+starfield-saver = "starfield_saver.main:main"

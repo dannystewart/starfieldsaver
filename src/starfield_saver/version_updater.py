@@ -6,10 +6,16 @@ import sys
 from pathlib import Path
 
 import requests
-from dsutil.log import LocalLogger
-from version import CURRENT_VERSION
+from polykit.env import PolyEnv
+from polykit.log import PolyLog
 
-VERSION_URL = "https://gitlab.dannystewart.com/danny/starfield-saver/-/raw/main/version.json"
+from starfield_saver.version import CURRENT_VERSION
+
+env = PolyEnv()
+env.add_var("GITHUB_TOKEN")
+token = env.get("GITHUB_TOKEN")
+
+VERSION_URL = f"https://raw.githubusercontent.com/dannystewart/starfield-saver/refs/heads/main/version.json?token={token}"
 
 OLD_FILENAME = "starfield_saver_old.exe"
 NEW_FILENAME = "starfield_saver_new.exe"
@@ -19,7 +25,7 @@ class VersionUpdater:
     """Check for updates and prompt the user to update if a new version is available."""
 
     def __init__(self):
-        self.logger = LocalLogger.setup_logger()
+        self.logger = PolyLog.get_logger("version_updater")
 
     def check_for_updates(self) -> None:
         """Check for updates and prompt the user to update if a new version is available."""
