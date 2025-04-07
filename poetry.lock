@@ -431,7 +431,7 @@ tzlocal = ">=5.3.1"
 type = "git"
 url = "https://github.com/dannystewart/polykit.git"
 reference = "HEAD"
-resolved_reference = "395f3eff602608ae87c6ee47a65a6f157f764e8d"
+resolved_reference = "58f2223c435f3beac04f8ba72daeb9a823ac2210"
 
 [[package]]
 name = "psutil"
