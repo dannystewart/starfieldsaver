@@ -1,8 +1,7 @@
-# -*- mode: python ; coding: utf-8 -*-
-
+from pyinstaller import EXE, PYZ, Analysis
 
 a = Analysis(
-    ["main.py"],
+    ["src/starfield_saver/main.py"],
     pathex=[],
     binaries=[],
     datas=[],

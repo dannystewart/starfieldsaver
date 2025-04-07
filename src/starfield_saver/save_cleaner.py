@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import os
+import operator
 from collections import defaultdict
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from config_loader import QuicksaveConfig
@@ -11,7 +12,6 @@ from globals import TZ
 
 if TYPE_CHECKING:
     import logging
-    from pathlib import Path
 
     from config_loader import QuicksaveConfig
 
@@ -111,7 +111,7 @@ class SaveCleaner:
         files_to_delete = []
 
         # Sort saves by timestamp (newest first)
-        saves.sort(key=lambda x: x[1], reverse=True)
+        saves.sort(key=operator.itemgetter(1), reverse=True)
 
         for save_file, save_time in saves:
             save_time = save_time.replace(tzinfo=TZ)
@@ -141,7 +141,7 @@ class SaveCleaner:
 
     def _parse_save_name(self, save_path: str) -> tuple[str, datetime]:
         """Extract character ID and timestamp from save file name."""
-        filename = os.path.basename(save_path)
+        filename = Path(save_path).name
         parts = filename.split("_")
 
         # Try to find the timestamp by looking for a part that starts with '202'
@@ -156,7 +156,7 @@ class SaveCleaner:
             return None, None
 
         try:
-            timestamp = datetime.strptime(timestamp_part, "%Y%m%d%H%M%S")
+            timestamp = datetime.strptime(timestamp_part, "%Y%m%d%H%M%S%z", tz=TZ)
         except ValueError:
             self.logger.warning("Invalid timestamp format in filename: %s", filename)
             return None, None

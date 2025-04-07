@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import os
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psutil
-from watchdog.observers import Observer
-
 from config_loader import ConfigFileHandler, SaveFileHandler
-from globals import TZ
+from polykit.formatters import TZ
+from watchdog.observers import Observer
 
 if sys.platform == "win32":
     import win32api  # type: ignore
@@ -120,7 +119,7 @@ class ProcessMonitor:
         )
         try:
             process_path = win32process.GetModuleFileNameEx(handle, 0)
-            return os.path.basename(process_path)
+            return Path(process_path).name
         finally:
             win32api.CloseHandle(handle)
 

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dsutil.errors import configure_traceback
-from dsutil.log import LocalLogger
+from polykit.core import polykit_setup
+from polykit.log import PolyLog
 from quicksave_utility import QuicksaveUtility
 from version_updater import VersionUpdater
 
-configure_traceback()
+polykit_setup()
 
-logger = LocalLogger.setup_logger()
+logger = PolyLog.get_logger("starfield_saver")
 updater = VersionUpdater()
 
 if __name__ == "__main__":

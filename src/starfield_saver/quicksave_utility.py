@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import os
 import re
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pynput.keyboard import Controller, Key
-
 from config_loader import ConfigLoader, SaveType
-from dsutil.files import copy_file, list_files
-from dsutil.log import LocalLogger
-from globals import TZ
+from polykit.files import PolyFile
+from polykit.formatters import TZ
+from polykit.log import PolyLog
 from process_monitor import ProcessMonitor
+from pynput.keyboard import Controller, Key
 from save_cleaner import SaveCleaner
 from sound_player import SoundPlayer
 
@@ -27,7 +26,7 @@ class QuicksaveUtility:
 
     def __init__(self):
         self.config: QuicksaveConfig = ConfigLoader.load()
-        self.logger: Logger = LocalLogger.setup_logger(
+        self.logger: Logger = PolyLog.get_logger(
             "quicksave", level="debug" if self.config.debug_log else "info"
         )
 
@@ -106,39 +105,39 @@ class QuicksaveUtility:
 
     def new_game_save_detected(self, save_path: str) -> None:
         """Handle a manual quicksave event or an autosave event."""
-        self.logger.debug("New save detected: %s", os.path.basename(save_path))
+        self.logger.debug("New save detected: %s", Path(save_path).name)
         save_type = self.identify_save_type(save_path)
 
         if save_type == SaveType.MANUAL:
-            self.logger.debug("Skipping manual save: %s", os.path.basename(save_path))
+            self.logger.debug("Skipping manual save: %s", Path(save_path).name)
             return
 
         # If this was a scheduled interval save, treat it as automatic
         if save_type == SaveType.QUICKSAVE and self.is_scheduled_save:
             self.logger.info(
-                "Copying new scheduled quicksave to regular save: %s", os.path.basename(save_path)
+                "Copying new scheduled quicksave to regular save: %s", Path(save_path).name
             )
             self.copy_save_to_new_file(save_path, auto=True, scheduled=True)
             self.is_scheduled_save = False
             return
 
-        save_time = datetime.fromtimestamp(os.path.getmtime(save_path), tz=TZ)
+        save_time = datetime.fromtimestamp(Path(save_path).stat().st_mtime, tz=TZ)
 
         if self.last_save_time is None or save_time > self.last_save_time:
             if save_type == SaveType.QUICKSAVE:
                 self.copy_save_to_new_file(save_path, auto=False)
             elif save_type == SaveType.AUTOSAVE:
-                self.logger.debug("New autosave: %s", os.path.basename(save_path))
+                self.logger.debug("New autosave: %s", Path(save_path).name)
                 self.copy_save_to_new_file(save_path, auto=True)
 
     def copy_save_to_new_file(self, source: str, auto: bool, scheduled: bool = False) -> bool:
         """Copy the save to a new file with a name matching the game's format."""
         if source == self.last_copied_save_name:
-            self.logger.debug("Skipping save already copied: %s", os.path.basename(source))
+            self.logger.debug("Skipping save already copied: %s", Path(source).name)
             return False
 
-        save_files = list_files(self.config.save_directory, extensions=["sfs"])
-        source_filename = os.path.basename(source)
+        save_files = PolyFile.list(self.config.save_directory, extensions=["sfs"])
+        source_filename = Path(source).name
 
         highest_save_id, next_save_id = self._get_next_save_id(save_files)
         self.logger.debug(
@@ -149,7 +148,7 @@ class QuicksaveUtility:
         )
 
         new_filename = re.sub(r"^(Quicksave0|Autosave\d+)", f"Save{next_save_id}", source_filename)
-        destination = os.path.join(self.config.save_directory, new_filename)
+        destination = Path(self.config.save_directory) / new_filename
 
         try:
             return self._perform_file_copy(source, destination, scheduled, auto)
@@ -161,25 +160,25 @@ class QuicksaveUtility:
     def _perform_file_copy(
         self, source: str, destination: str, scheduled: bool, auto: bool
     ) -> bool:
-        copy_file(source, destination, show_output=False)
+        PolyFile.copy(source, destination, show_output=False)
         self.logger.info(
             "Copied most recent %s%s to %s.",
             "scheduled " if scheduled else "",
             self.identify_save_type(source),
-            os.path.basename(destination),
+            Path(destination).name,
         )
         if auto:
             self.sound.play_success()
         else:
             self.sound.play_notification()
 
-        save_time = datetime.fromtimestamp(os.path.getmtime(source), tz=TZ)
+        save_time = datetime.fromtimestamp(Path(source).stat().st_mtime, tz=TZ)
         self.last_copied_save_name = source
         self.last_save_time = save_time
         self.logger.debug(
             "Reset interval timer due to %s save: %s",
             "automatic" if auto else "manual",
-            os.path.basename(source),
+            Path(source).name,
         )
         return True
 
@@ -188,7 +187,7 @@ class QuicksaveUtility:
         save_ids = []
 
         for f in save_files:
-            if match := re.match(r"Save(\d+)_[A-F0-9]{8}", os.path.basename(f)):
+            if match := re.match(r"Save(\d+)_[A-F0-9]{8}", Path(f).name):
                 try:
                     save_id = int(match[1])
                     save_ids.append(save_id)

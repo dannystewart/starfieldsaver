@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import toml
 from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
 
-from globals import CONFIG_FILE_NAME
-
 if TYPE_CHECKING:
     from quicksave_utility import QuicksaveUtility
+
+CONFIG_FILE_NAME = "config.toml"
 
 
 @dataclass
 class QuicksaveConfig:
-    """
-    Configuration for behavior of the quicksave utility.
+    """Configuration for behavior of the quicksave utility.
 
     Attributes:
         save_directory: Directory where save files are stored.
@@ -82,12 +81,16 @@ class ConfigLoader:
 
     @classmethod
     def load(cls) -> QuicksaveConfig:
-        """Load the configuration from the TOML file or create a new one."""
+        """Load the configuration from the TOML file or create a new one.
+
+        Raises:
+            toml.TomlDecodeError: If the configuration file is malformed.
+        """
         for attempt in range(cls.MAX_RETRIES):
             try:
-                if not os.path.exists(CONFIG_FILE_NAME):
+                if not Path(CONFIG_FILE_NAME).exists():
                     return cls._create_default_config()
-                with open(CONFIG_FILE_NAME) as f:
+                with Path(CONFIG_FILE_NAME).open(encoding="utf-8") as f:
                     config_data = toml.load(f)
                 return cls._process_config(config_data)
             except toml.TomlDecodeError:
@@ -159,14 +162,12 @@ class ConfigLoader:
         if config.extra_config:
             config_dict["extra"] = config.extra_config
 
-        with open(CONFIG_FILE_NAME, "w") as f:
+        with Path(CONFIG_FILE_NAME).open("w", encoding="utf-8") as f:
             toml.dump(config_dict, f)
 
     @classmethod
     def _create_default_config(cls) -> QuicksaveConfig:
-        quicksave_folder = os.path.join(
-            os.path.expanduser("~"), "Documents", "My Games", "Starfield", "Saves"
-        )
+        quicksave_folder = Path("~/Documents/My Games/Starfield/Saves").expanduser()
         config = QuicksaveConfig(quicksave_folder)
         cls._save_config(config)
         return config
@@ -205,8 +206,8 @@ class SaveFileHandler(FileSystemEventHandler):
         """Handle a file move in the save directory."""
         self.saver.logger.debug(
             "Move event detected: %s -> %s",
-            os.path.basename(event.src_path),
-            os.path.basename(event.dest_path),
+            Path(event.src_path).name,
+            Path(event.dest_path).name,
         )
 
         if not event.is_directory and event.dest_path.endswith(".sfs"):

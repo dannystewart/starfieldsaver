@@ -1,7 +1,6 @@
 # ruff: noqa: T201
 
-"""
-Renumber Starfield saves beginning with the specified save number.
+"""Renumber Starfield saves beginning with the specified save number.
 
 This single-use utility script will renumber Starfield save files (*.sfs) in the specified
 directory, starting with the given save number. Everything prior to this number will be left alone.

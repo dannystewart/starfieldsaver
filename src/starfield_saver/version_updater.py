@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import json
-import os
 import subprocess
 import sys
+from pathlib import Path
 
 import requests
-
 from dsutil.log import LocalLogger
 from version import CURRENT_VERSION
 
@@ -43,11 +44,11 @@ class VersionUpdater:
         """Download the new version and replace the current executable."""
         try:
             response = requests.get(url)
-            with open(NEW_FILENAME, "wb") as f:
+            with Path(NEW_FILENAME).open("wb") as f:
                 f.write(response.content)
 
             # Create a batch file to handle the update
-            with open("update.bat", "w") as batch_file:
+            with Path("update.bat").open("w", encoding="utf-8") as batch_file:
                 batch_file.write(f"""
 @echo off
 timeout /t 1 /nobreak >nul
@@ -65,9 +66,9 @@ del "%~f0"
 
     def cleanup_old_version(self) -> None:
         """Remove the old version of the executable if it exists."""
-        if os.path.exists(OLD_FILENAME):
+        if Path(OLD_FILENAME).exists():
             try:
-                os.remove(OLD_FILENAME)
+                Path(OLD_FILENAME).unlink()
                 self.logger.info("Removed old version: %s", OLD_FILENAME)
             except Exception as e:
                 self.logger.error("Failed to remove old version: %s", str(e))
