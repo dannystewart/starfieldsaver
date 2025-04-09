@@ -6,19 +6,14 @@ from polykit.core import polykit_setup
 from polykit.log import PolyLog
 
 from starfield_saver.quicksave_utility import QuicksaveUtility
-from starfield_saver.version_updater import VersionUpdater
 
 polykit_setup()
 
 logger = PolyLog.get_logger("starfield_saver")
-updater = VersionUpdater()
 
 
 def main():
     """Main function to run the quicksave utility."""
-    updater.cleanup_old_version()
-    updater.check_for_updates()
-
     try:
         QuicksaveUtility().run()
     except Exception as e:
