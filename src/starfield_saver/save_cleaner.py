@@ -14,7 +14,7 @@ from starfield_saver.config_loader import QuicksaveConfig
 if TYPE_CHECKING:
     import logging
 
-    from config_loader import QuicksaveConfig
+    from starfield_saver.config_loader import QuicksaveConfig
 
 
 class SaveCleaner:
@@ -51,10 +51,10 @@ class SaveCleaner:
         self.logger.info("Starting save cleanup process...")
 
         save_files = PolyFile.list(
-            self.config.save_directory,
+            Path(self.config.save_directory),
             extensions=["sfs"],
             sort_key=lambda x: x.stat().st_mtime,
-            reverse_sort=True,
+            reverse=True,
         )
 
         if not save_files:
@@ -84,9 +84,7 @@ class SaveCleaner:
         self.logger.info("Total saves to delete: %s", len(files_to_delete))
         self.logger.info("Total saves to keep: %s", len(save_files) - len(files_to_delete))
 
-        successful, failed = PolyFile.delete(
-            files_to_delete, show_output=False, dry_run=self.config.dry_run
-        )
+        successful, failed = PolyFile.delete(files_to_delete, dry_run=self.config.dry_run)
 
         if self.config.dry_run:
             self.logger.info(
@@ -100,7 +98,7 @@ class SaveCleaner:
                 failed,
             )
 
-        if failed > 0:
+        if len(failed) > 0:
             self.logger.warning("Failed to delete %s saves.", failed)
 
     def _get_files_to_delete(
@@ -140,7 +138,7 @@ class SaveCleaner:
 
         return files_to_delete
 
-    def _parse_save_name(self, save_path: str) -> tuple[str, datetime]:
+    def _parse_save_name(self, save_path: str) -> tuple[str | None, datetime | None]:
         """Extract character ID and timestamp from save file name."""
         filename = Path(save_path).name
         parts = filename.split("_")
@@ -157,7 +155,7 @@ class SaveCleaner:
             return None, None
 
         try:
-            timestamp = datetime.strptime(timestamp_part, "%Y%m%d%H%M%S%z", tz=TZ)
+            timestamp = datetime.strptime(timestamp_part, "%Y%m%d%H%M%S%z")
         except ValueError:
             self.logger.warning("Invalid timestamp format in filename: %s", filename)
             return None, None

@@ -13,13 +13,13 @@ Usage: python save_renumberer.py <starting_save_number> [--dry-run]
 from __future__ import annotations
 
 import argparse
-import os
 import re
+from pathlib import Path
 
-SAVE_DIRECTORY = r"C:\Users\danny\Documents\My Games\Starfield\Saves"
+SAVE_DIR = Path(r"C:\Users\danny\Documents\My Games\Starfield\Saves")
 
 
-def safe_int(s: str) -> int:
+def safe_int(s: str) -> float:
     """Convert a string to an integer, handling extra digits."""
     if match := re.match(r"Save(\d+)", s):
         num_str = match[1]
@@ -35,11 +35,10 @@ def safe_int(s: str) -> int:
 def renumber_saves(starting_save_number: int, dry_run: bool = True) -> None:
     """Renumber save files in the given directory."""
     # Get all .sfs files in the directory
-    save_files = [f for f in os.listdir(SAVE_DIRECTORY) if f.endswith(".sfs")]
+    save_files = [f.name for f in SAVE_DIR.iterdir() if f.is_file() and f.name.endswith(".sfs")]
 
     # Sort the files, putting non-matching files at the end
     save_files.sort(key=safe_int)
-
     # Start numbering from the first save number
     new_number = starting_save_number
 
@@ -79,9 +78,9 @@ def perform_rename(changes: list[tuple[str, str]]) -> None:
     """Perform the actual renaming of files."""
     print("\nPerforming actual renaming...")
     for old, new in changes:
-        old_path = os.path.join(SAVE_DIRECTORY, old)
-        new_path = os.path.join(SAVE_DIRECTORY, new)
-        os.rename(old_path, new_path)
+        old_path = Path(SAVE_DIR) / old
+        new_path = Path(SAVE_DIR) / new
+        Path(old_path).rename(new_path)
         print(f"Renamed {old} to {new}")
     print("Renaming complete.")
 

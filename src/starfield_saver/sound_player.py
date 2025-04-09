@@ -14,9 +14,9 @@ try:
     import numpy as np
     import pygame
 
-    PYGAME_AVAILABLE = True
+    pygame_available = True
 except ImportError:
-    PYGAME_AVAILABLE = False
+    pygame_available = False
 
 
 class SoundPlayer:
@@ -28,18 +28,30 @@ class SoundPlayer:
 
     def __del__(self):
         """Cleanup pygame resources if used."""
-        if PYGAME_AVAILABLE:
+        if pygame_available:
             pygame.mixer.quit()
 
     def setup_sound_system(self) -> None:
         """Set up the sound system based on available libraries."""
-        if PYGAME_AVAILABLE:
+        if pygame_available:
             pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=2048)
             self.play_beep = self.pygame_beep
             self.logger.debug("Using pygame for sound playback.")
         else:
-            self.play_beep = self.winsound_beep
+            self.play_beep = self.winsound_beep_wrapper
             self.logger.debug("Pygame not available. Using winsound for sound playback.")
+
+    def winsound_beep_wrapper(
+        self,
+        freq: int,
+        duration: float,
+        pause: float = 0.0,
+        vol: float = 0.5,  # noqa: ARG002
+    ) -> None:
+        """Wrapper for winsound_beep that matches the play_beep signature."""
+        self.winsound_beep(freq, duration)
+        if pause > 0:
+            time.sleep(pause)
 
     def play_success(self) -> None:
         """Play a success sound to indicate a save action."""
@@ -59,16 +71,16 @@ class SoundPlayer:
             self.play_beep(500, 0.2, pause=0.1, vol=0.5)
             self.play_beep(300, 0.3, pause=0.2, vol=0.5)
 
-    def play_beep(self, freq: int, duration: int, pause: float = 0.0, vol: float = 0.5) -> None:
+    def play_beep(self, freq: int, duration: float, pause: float = 0.0, vol: float = 0.5) -> None:
         """Play a beep with a specific frequency, duration, and pause."""
-        if PYGAME_AVAILABLE:
+        if pygame_available:
             self.pygame_beep(freq, duration, pause, vol)
-            pygame.time.wait(pause * 1000)
         else:
             self.winsound_beep(freq, duration)
-            time.sleep(pause)
+            if pause > 0:
+                time.sleep(pause)
 
-    def pygame_beep(self, freq: int, duration: int, pause: float = 0.0, vol: float = 0.5) -> None:
+    def pygame_beep(self, freq: int, duration: float, pause: float = 0.0, vol: float = 0.5) -> None:
         """Play a beep using pygame."""
         sample_rate = 44100
         num_samples = int(duration * sample_rate)

@@ -20,7 +20,7 @@ from starfield_saver.sound_player import SoundPlayer
 if TYPE_CHECKING:
     from logging import Logger
 
-    from config_loader import QuicksaveConfig
+    from starfield_saver.config_loader import QuicksaveConfig
 
 
 class QuicksaveUtility:
@@ -139,10 +139,10 @@ class QuicksaveUtility:
             self.logger.debug("Skipping save already copied: %s", Path(source).name)
             return False
 
-        save_files = PolyFile.list(self.config.save_directory, extensions=["sfs"])
+        save_files = PolyFile.list(Path(self.config.save_directory), extensions=["sfs"])
         source_filename = Path(source).name
 
-        highest_save_id, next_save_id = self._get_next_save_id(save_files)
+        highest_save_id, next_save_id = self._get_next_save_id([str(f) for f in save_files])
         self.logger.debug(
             "Found %s saves. Highest ID is %s. Next ID is %s.",
             len(save_files),
@@ -154,7 +154,7 @@ class QuicksaveUtility:
         destination = Path(self.config.save_directory) / new_filename
 
         try:
-            return self._perform_file_copy(source, destination, scheduled, auto)
+            return self._perform_file_copy(source, str(destination), scheduled, auto)
         except Exception as e:
             self.logger.error("Failed to copy file: %s", str(e))
             self.sound.play_error()
@@ -163,7 +163,7 @@ class QuicksaveUtility:
     def _perform_file_copy(
         self, source: str, destination: str, scheduled: bool, auto: bool
     ) -> bool:
-        PolyFile.copy(source, destination, show_output=False)
+        PolyFile.copy(Path(source), Path(destination))
         self.logger.info(
             "Copied most recent %s%s to %s.",
             "scheduled " if scheduled else "",

@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import toml
-from watchdog.events import FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.events import (
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileSystemEventHandler,
+)
 
 if TYPE_CHECKING:
     from starfield_saver.quicksave_utility import QuicksaveUtility
@@ -98,6 +104,7 @@ class ConfigLoader:
                     time.sleep(cls.RETRY_DELAY)
                 else:
                     raise
+        return cls._create_default_config()
 
     @classmethod
     def reload(cls, current_config: QuicksaveConfig, logger: logging.Logger) -> QuicksaveConfig:
@@ -168,7 +175,7 @@ class ConfigLoader:
     @classmethod
     def _create_default_config(cls) -> QuicksaveConfig:
         quicksave_folder = Path("~/Documents/My Games/Starfield/Saves").expanduser()
-        config = QuicksaveConfig(quicksave_folder)
+        config = QuicksaveConfig(str(quicksave_folder))
         cls._save_config(config)
         return config
 
@@ -190,9 +197,9 @@ class ConfigFileHandler(FileSystemEventHandler):
     def __init__(self, quicksave_utility: QuicksaveUtility):
         self.saver = quicksave_utility
 
-    def on_modified(self, event: FileModifiedEvent) -> None:
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         """Reload the configuration when the file is modified."""
-        if not event.is_directory and event.src_path.endswith(CONFIG_FILE_NAME):
+        if not event.is_directory and str(event.src_path).endswith(CONFIG_FILE_NAME):
             self.saver.reload_config()
 
 
@@ -202,16 +209,16 @@ class SaveFileHandler(FileSystemEventHandler):
     def __init__(self, quicksave_utility: QuicksaveUtility):
         self.saver = quicksave_utility
 
-    def on_moved(self, event: FileMovedEvent) -> None:
+    def on_moved(self, event: FileMovedEvent | DirMovedEvent) -> None:
         """Handle a file move in the save directory."""
         self.saver.logger.debug(
             "Move event detected: %s -> %s",
-            Path(event.src_path).name,
-            Path(event.dest_path).name,
+            Path(str(event.src_path)).name,
+            Path(str(event.dest_path)).name,
         )
 
-        if not event.is_directory and event.dest_path.endswith(".sfs"):
+        if not event.is_directory and str(event.dest_path).endswith(".sfs"):
             if self.saver.config.enable_copy_to_regular_save:
-                self.saver.new_game_save_detected(event.dest_path)
+                self.saver.new_game_save_detected(str(event.dest_path))
         else:
             self.saver.logger.debug("Moved file is not a game save, ignoring.")

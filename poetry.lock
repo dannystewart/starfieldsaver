@@ -408,30 +408,26 @@ type = ["mypy (>=1.14.1)"]
 
 [[package]]
 name = "polykit"
-version = "0.7.5.dev"
-description = "Python toolkit"
+version = "0.9.0"
+description = "Delightful Python toolkit with power and personality "
 optional = false
 python-versions = ">=3.12"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "polykit-0.9.0-py3-none-any.whl", hash = "sha256:c4aed20856583621967cff21d79f6ef84a6eae11c8dc5f05592f492abc24de46"},
+    {file = "polykit-0.9.0.tar.gz", hash = "sha256:1bd43fe5dc818d1e9c22a855bfabed940f6527e6b444f4e0d6dc32e74a5ec5fa"},
+]
 
 [package.dependencies]
-halo = ">=0.0.31"
+halo = ">=0.0.31,<0.0.32"
 natsort = ">=8.4.0,<9.0.0"
-packaging = ">=24.2"
-platformdirs = ">=4.3.7"
-python-dateutil = ">=2.9.0.post0"
-python-dotenv = ">=1.1.0"
-requests = ">=2.32.3"
+packaging = ">=24.2,<25.0"
+platformdirs = ">=4.3.7,<5.0.0"
+python-dateutil = ">=2.9.0.post0,<3.0.0"
+python-dotenv = ">=1.1.0,<2.0.0"
+requests = ">=2.32.3,<3.0.0"
 send2trash = ">=1.8.3,<2.0.0"
-tzlocal = ">=5.3.1"
-
-[package.source]
-type = "git"
-url = "https://github.com/dannystewart/polykit.git"
-reference = "HEAD"
-resolved_reference = "58f2223c435f3beac04f8ba72daeb9a823ac2210"
+tzlocal = ">=5.3.1,<6.0.0"
 
 [[package]]
 name = "psutil"
@@ -1036,4 +1032,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "a455df66fc80647f6ea507a853161828aa903625d52e17105de581bbd3296bb6"
+content-hash = "d9219f24b886e55c5cac78b180e8c90e49ccd2cf2d4bd23ffb098f0fc6ecc5a0"

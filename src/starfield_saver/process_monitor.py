@@ -18,7 +18,7 @@ if sys.platform == "win32":
     import win32process  # type: ignore
 
 if TYPE_CHECKING:
-    from quicksave_utility import QuicksaveUtility
+    from starfield_saver.quicksave_utility import QuicksaveUtility
 
 
 class ProcessMonitor:
