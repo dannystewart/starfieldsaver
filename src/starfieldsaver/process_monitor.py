@@ -9,7 +9,7 @@ import psutil
 from polykit.formatters import TZ
 from watchdog.observers import Observer
 
-from starfield_saver.config_loader import ConfigFileHandler, SaveFileHandler
+from starfieldsaver.config_loader import ConfigFileHandler, SaveFileHandler
 
 if sys.platform == "win32":
     import win32api  # type: ignore
@@ -18,7 +18,7 @@ if sys.platform == "win32":
     import win32process  # type: ignore
 
 if TYPE_CHECKING:
-    from starfield_saver.quicksave_utility import QuicksaveUtility
+    from starfieldsaver.quicksave_utility import QuicksaveUtility
 
 
 class ProcessMonitor:

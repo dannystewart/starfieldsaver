@@ -12,15 +12,15 @@ from polykit.formatters import TZ
 from polykit.log import PolyLog
 from pynput.keyboard import Controller, Key
 
-from starfield_saver.config_loader import ConfigLoader, SaveType
-from starfield_saver.process_monitor import ProcessMonitor
-from starfield_saver.save_cleaner import SaveCleaner
-from starfield_saver.sound_player import SoundPlayer
+from starfieldsaver.config_loader import ConfigLoader, SaveType
+from starfieldsaver.process_monitor import ProcessMonitor
+from starfieldsaver.save_cleaner import SaveCleaner
+from starfieldsaver.sound_player import SoundPlayer
 
 if TYPE_CHECKING:
     from logging import Logger
 
-    from starfield_saver.config_loader import QuicksaveConfig
+    from starfieldsaver.config_loader import QuicksaveConfig
 
 
 class QuicksaveUtility:

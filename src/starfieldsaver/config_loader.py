@@ -17,7 +17,7 @@ from watchdog.events import (
 )
 
 if TYPE_CHECKING:
-    from starfield_saver.quicksave_utility import QuicksaveUtility
+    from starfieldsaver.quicksave_utility import QuicksaveUtility
 
 CONFIG_FILE_NAME = "config.toml"
 

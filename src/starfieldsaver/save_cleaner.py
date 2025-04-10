@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 from polykit.files import PolyFile
 from polykit.formatters import TZ
 
-from starfield_saver.config_loader import QuicksaveConfig
+from starfieldsaver.config_loader import QuicksaveConfig
 
 if TYPE_CHECKING:
     import logging
 
-    from starfield_saver.config_loader import QuicksaveConfig
+    from starfieldsaver.config_loader import QuicksaveConfig
 
 
 class SaveCleaner:

@@ -408,14 +408,14 @@ type = ["mypy (>=1.14.1)"]
 
 [[package]]
 name = "polykit"
-version = "0.9.0"
+version = "0.9.1"
 description = "Delightful Python toolkit with power and personality "
 optional = false
 python-versions = ">=3.12"
 groups = ["main"]
 files = [
-    {file = "polykit-0.9.0-py3-none-any.whl", hash = "sha256:c4aed20856583621967cff21d79f6ef84a6eae11c8dc5f05592f492abc24de46"},
-    {file = "polykit-0.9.0.tar.gz", hash = "sha256:1bd43fe5dc818d1e9c22a855bfabed940f6527e6b444f4e0d6dc32e74a5ec5fa"},
+    {file = "polykit-0.9.1-py3-none-any.whl", hash = "sha256:898cb2c4271f918f1d95012035f6889638b404c4929e39673b90e4c55f842744"},
+    {file = "polykit-0.9.1.tar.gz", hash = "sha256:edd20b1e333bd41aaa14afc894083b1e6a97d18e271926acc0889c61ecc436f4"},
 ]
 
 [package.dependencies]
@@ -1032,4 +1032,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "d9219f24b886e55c5cac78b180e8c90e49ccd2cf2d4bd23ffb098f0fc6ecc5a0"
+content-hash = "8127748a747d2c2e4d6b61f848788feee46db10dc407fe2b92c1dc10b98475a6"

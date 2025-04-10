@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from polykit.core import polykit_setup
+import sys
+
+from polykit.core import platform_check, polykit_setup
 from polykit.log import PolyLog
 
-from starfield_saver.quicksave_utility import QuicksaveUtility
+from starfieldsaver.quicksave_utility import QuicksaveUtility
 
 polykit_setup()
 
-logger = PolyLog.get_logger("starfield_saver")
+if not platform_check("Windows"):
+    sys.exit(1)
+
+logger = PolyLog.get_logger("starfieldsaver")
 
 
 def main():

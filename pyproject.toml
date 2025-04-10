@@ -1,5 +1,5 @@
 [project]
-name = "starfield-saver"
+name = "starfieldsaver"
 version = "0.6.0"
 description = "Starfield automatic quicksave and backup utility"
 authors = [{ name = "Danny Stewart", email = "danny@stewart.cc" }]
@@ -10,7 +10,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "natsort (>=8.4.0,<9.0.0)",
     "numpy (>=2.2.4,<3.0.0)",
-    "polykit (>=0.9.0,<0.10.0)",
+    "polykit (>=0.9.1,<0.10.0)",
     "psutil (>=7.0.0,<8.0.0)",
     "pygame (>=2.6.1,<3.0.0)",
     "pynput (>=1.8.1,<2.0.0)",
@@ -30,4 +30,4 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [project.scripts]
-starfield-saver = "starfield_saver.main:main"
+starfieldsaver = "starfieldsaver.main:main"

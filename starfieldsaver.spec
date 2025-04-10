@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from pyinstaller import EXE, PYZ, Analysis
 
 a = Analysis(
-    ["src/starfield_saver/main.py"],
+    ["src/starfieldsaver/main.py"],
     pathex=[],
     binaries=[],
     datas=[],
@@ -21,7 +23,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="starfield_saver",
+    name="starfieldsaver",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
