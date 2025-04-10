@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import toml
+from polykit.paths import PolyPath
 from watchdog.events import (
     DirModifiedEvent,
     DirMovedEvent,
@@ -19,7 +20,8 @@ from watchdog.events import (
 if TYPE_CHECKING:
     from starfieldsaver.quicksave_utility import QuicksaveUtility
 
-CONFIG_FILE_NAME = "config.toml"
+CONFIG_FILE_NAME: str = "config.toml"
+CONFIG_FILE: Path = PolyPath("starfieldsaver").from_config(CONFIG_FILE_NAME)
 
 
 @dataclass
@@ -94,9 +96,9 @@ class ConfigLoader:
         """
         for attempt in range(cls.MAX_RETRIES):
             try:
-                if not Path(CONFIG_FILE_NAME).exists():
+                if not CONFIG_FILE.exists():
                     return cls._create_default_config()
-                with Path(CONFIG_FILE_NAME).open(encoding="utf-8") as f:
+                with CONFIG_FILE.open(encoding="utf-8") as f:
                     config_data = toml.load(f)
                 return cls._process_config(config_data)
             except toml.TomlDecodeError:
@@ -169,7 +171,7 @@ class ConfigLoader:
         if config.extra_config:
             config_dict["extra"] = config.extra_config
 
-        with Path(CONFIG_FILE_NAME).open("w", encoding="utf-8") as f:
+        with CONFIG_FILE.open("w", encoding="utf-8") as f:
             toml.dump(config_dict, f)
 
     @classmethod
