@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -17,17 +16,9 @@ from watchdog.events import (
 )
 
 if TYPE_CHECKING:
-    from starfieldsaver import StarfieldQuicksaver
+    from starfieldsaver.quicksaver import StarfieldQuicksaver
 
 CONFIG_FILE: Path = Path("starfieldsaver.toml")
-
-
-class SaveType(StrEnum):
-    """Save types for Starfield."""
-
-    QUICKSAVE = "quicksave"
-    AUTOSAVE = "autosave"
-    MANUAL = "manual save"
 
 
 @dataclass
