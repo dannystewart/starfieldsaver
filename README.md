@@ -28,7 +28,7 @@ Configuration is stored in `starfieldsaver.toml` in the application directory. Y
 ```toml
 [paths]
 save_dir = "C:/Users/YourUsername/Documents/My Games/Starfield/Saves"
-process_name = "Starfield.exe"
+game_exe = "Starfield.exe"
 
 [saves]
 enable_quicksave = true
@@ -50,7 +50,7 @@ enable_debug = false
 #### Paths
 
 - `save_dir`: Directory where Starfield saves are stored
-- `process_name`: Name of the game process to monitor (with or without .exe)
+- `game_exe`: Name of the game process to monitor (with or without .exe)
 
 #### Saves
 
@@ -99,6 +99,6 @@ You can use the `enable_success_sounds` config option to disable success and not
 
 ## Troubleshooting
 
-- **Game not detected**: Ensure the correct `process_name` is set in starfieldsaver.toml.
+- **Game not detected**: Ensure the correct `game_exe` is set in starfieldsaver.toml.
 - **Saves not detected**: Verify the `save_dir` path is correct.
 - **No sounds**: Check that `enable_success_sounds` is set to true.

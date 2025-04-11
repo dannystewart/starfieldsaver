@@ -56,21 +56,21 @@ class ProcessMonitor:
         """Check if the game process is running."""
         # Check for the game process
         is_running = any(
-            process.info["name"].lower() == self.saver.config.process_name.lower()
+            process.info["name"].lower() == self.saver.config.game_exe.lower()
             for process in psutil.process_iter(["name"])
         )
 
         if is_running != self.previous_game_running_state:
             if is_running:
-                self.logger.info("%s has started.", self.saver.config.process_name)
+                self.logger.info("%s has started.", self.saver.config.game_exe)
             else:
-                self.logger.info("%s has quit.", self.saver.config.process_name)
+                self.logger.info("%s has quit.", self.saver.config.game_exe)
             self.previous_game_running_state = is_running
 
         if not is_running:
             if self.game_is_running:
                 self.logger.info(
-                    "Skipping checks while %s is not running.", self.saver.config.process_name
+                    "Skipping checks while %s is not running.", self.saver.config.game_exe
                 )
             self.game_is_running = False
         else:
@@ -81,15 +81,15 @@ class ProcessMonitor:
     def is_game_in_foreground(self) -> bool:
         """Check if the game is in running in the foreground."""
         foreground_process = self.get_foreground_process()
-        is_active = foreground_process.lower().startswith(self.saver.config.process_name.lower())
+        is_active = foreground_process.lower().startswith(self.saver.config.game_exe.lower())
 
         if is_active != self.previous_game_foreground_state:
             if is_active:
-                self.logger.info("%s has entered focus.", self.saver.config.process_name)
+                self.logger.info("%s has entered focus.", self.saver.config.game_exe)
             else:
                 self.logger.info(
                     "%s is no longer in focus (%s now in focus).",
-                    f"{self.saver.config.process_name}",
+                    f"{self.saver.config.game_exe}",
                     foreground_process,
                 )
             self.previous_game_foreground_state = is_active
@@ -151,7 +151,7 @@ class ProcessMonitor:
             self._increment_reminder_time()
 
         elif current_time - self.last_logging_check > self.reminder_interval:
-            self.logger.info("Waiting for %s to run.", self.saver.config.process_name)
+            self.logger.info("Waiting for %s to run.", self.saver.config.game_exe)
             self.last_logging_check = current_time
             self._increment_reminder_time()
 

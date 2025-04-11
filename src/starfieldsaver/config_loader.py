@@ -36,7 +36,7 @@ class QuicksaveConfig:
 
     Attributes:
         save_dir: Directory where save files are stored.
-        process_name: Name of the game process to monitor.
+        game_exe: Name of the game process to monitor.
         check_interval: Time between status checks (in seconds).
         quicksave_every: Time between quicksaves (in seconds).
         enable_quicksave: Whether to enable quicksaving on the set interval.
@@ -48,7 +48,7 @@ class QuicksaveConfig:
     """
 
     save_dir: str
-    process_name: str = "Starfield.exe"
+    game_exe: str = "Starfield.exe"
     enable_quicksave: bool = True
     check_interval: float = 10
     quicksave_every: float = 240
@@ -61,7 +61,7 @@ class QuicksaveConfig:
 
     # Define the structure of the TOML file
     config_structure: ClassVar[dict[str, list[str]]] = {
-        "paths": ["save_dir", "process_name"],
+        "paths": ["save_dir", "game_exe"],
         "saves": [
             "enable_quicksave",
             "check_interval",
@@ -75,10 +75,8 @@ class QuicksaveConfig:
 
     def __post_init__(self):
         # Append .exe to filename if not already present
-        self.game_process = (
-            f"{self.process_name}.exe"
-            if not self.process_name.endswith(".exe")
-            else self.process_name
+        self.game_exe = (
+            f"{self.game_exe}.exe" if not self.game_exe.endswith(".exe") else self.game_exe
         )
 
         # Get any additional config items not in the annotations
@@ -198,7 +196,7 @@ class ConfigFileHandler(FileSystemEventHandler):
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         """Reload the configuration when the file is modified."""
-        if not event.is_directory and str(event.src_path).endswith(CONFIG_FILE):
+        if not event.is_directory and str(event.src_path).endswith(str(CONFIG_FILE)):
             self.saver.reload_config()
 
 
