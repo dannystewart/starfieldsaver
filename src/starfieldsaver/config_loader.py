@@ -76,7 +76,7 @@ class QuicksaveConfig:
     def __post_init__(self):
         # Append .exe to filename if not already present
         self.game_process = (
-            f"{self.game_process}.exe"
+            f"{self.process_name}.exe"
             if not self.process_name.endswith(".exe")
             else self.process_name
         )
