@@ -20,7 +20,12 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ### Fixed
 
+- Fixes Windows path format in README by using double backslashes instead of single backslashes to comply with TOML syntax requirements.
 - Fixes heading levels in `CHANGELOG.md`.
+
+### Removed
+
+- Removes troubleshooting section from README as it was effectively redundant.
 
 ## [0.2.2] (2025-04-11)
 
