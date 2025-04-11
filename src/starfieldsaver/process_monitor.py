@@ -89,7 +89,7 @@ class ProcessMonitor:
 
         if is_active != self.previous_game_foreground_state:
             if is_active:
-                self.logger.info("%s has entered focus.", self.saver.config.process_name)
+                self.logger.info("%s.exe has entered focus.", self.saver.config.process_name)
             else:
                 self.logger.info(
                     "%s is no longer in focus (%s now in focus).",
