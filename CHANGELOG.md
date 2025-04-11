@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+## [0.2.2] (2025-04-11)
+
+## Changed
+
+- Renames `process_name` config variable to `game_exe` for better clarity and consistency.
+
+## Removed
+
+- Removes GitHub Pages documentation workflow, because it was causing problems for the sake of documentation that didn't exist anyway.
+
+## Fixed
+
+- Improves `pynput` import error handling on non-Windows platforms.
+- Fixes conditional importing of `pynput.keyboard` to prevent errors on non-Windows platforms.
+- Corrects game process name assignment when appending `.exe` extension - we were using the wrong variable name (oops!).
+
 ## [0.2.1] (2025-04-11)
 
 ### Added
@@ -72,7 +88,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 <!-- Versions -->
-[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.1...HEAD
+[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dannystewart/starfieldsaver/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/dannystewart/starfieldsaver/compare/v0.1.0...v0.1.1
