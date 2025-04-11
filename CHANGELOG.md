@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+## [0.2.3] (2025-04-11)
+
+### Added
+
+- Adds improved config file discovery with proper precedence, supporting packaged executables and prioritizing the current directory for both existing and new configs.
+- Adds validation of the save directory on startup, failing early with a clear error message if the directory doesn't exist.
+
+### Changed
+
+- Restructures the codebase by moving the `StarfieldQuicksaver` class to its own module and creating a dedicated `types` module to keep things better organized.
+- Updates `.gitignore` to exclude TOML files while specifically allowing `ruff.toml` to keep the linting config accessible without getting config files.
+
+### Fixed
+
+- Fixes heading levels in `CHANGELOG.md`.
+
 ## [0.2.2] (2025-04-11)
 
 ### Changed
@@ -88,7 +104,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 <!-- Versions -->
-[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.2...HEAD
+[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dannystewart/starfieldsaver/compare/v0.1.1...v0.2.0
