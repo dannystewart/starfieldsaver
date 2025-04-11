@@ -13,6 +13,10 @@ from polykit.core import platform_check, polykit_setup
 from polykit.files import PolyFile
 from polykit.formatters import TZ
 from polykit.log import PolyLog
+
+if not platform_check("Windows"):
+    sys.exit(1)
+
 from pynput.keyboard import Controller, Key
 
 from starfieldsaver.config_loader import ConfigLoader, SaveType
@@ -26,9 +30,6 @@ if TYPE_CHECKING:
     from starfieldsaver.config_loader import QuicksaveConfig
 
 polykit_setup()
-
-if not platform_check("Windows"):
-    sys.exit(1)
 
 logger = PolyLog.get_logger("starfieldsaver")
 
