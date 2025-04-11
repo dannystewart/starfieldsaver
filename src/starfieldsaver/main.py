@@ -14,10 +14,12 @@ from polykit.files import PolyFile
 from polykit.formatters import TZ
 from polykit.log import PolyLog
 
-if not platform_check("Windows"):
-    sys.exit(1)
-else:
+try:
     from pynput.keyboard import Controller, Key
+except ImportError:
+    if platform_check("Windows"):
+        print("pynput is not installed. Please install it using 'pip install pynput'.")
+    sys.exit(1)
 
 from starfieldsaver.config_loader import ConfigLoader, SaveType
 from starfieldsaver.process_monitor import ProcessMonitor
