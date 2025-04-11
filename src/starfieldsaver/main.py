@@ -55,7 +55,7 @@ class StarfieldQuicksaver:
 
     def run(self) -> None:
         """Run the quicksave utility."""
-        self.logger.info("Started quicksave utility for %s.exe.", self.config.process_name)
+        self.logger.info("Started quicksave utility for %s.", self.config.process_name)
 
         # Perform initial save cleanup (if enabled)
         self.save_cleaner.cleanup_old_saves()

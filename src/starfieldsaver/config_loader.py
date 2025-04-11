@@ -74,6 +74,14 @@ class QuicksaveConfig:
     }
 
     def __post_init__(self):
+        # Append .exe to filename if not already present
+        self.game_process = (
+            f"{self.game_process}.exe"
+            if not self.process_name.endswith(".exe")
+            else self.process_name
+        )
+
+        # Get any additional config items not in the annotations
         self.extra_config = {
             k: v for k, v in self.__dict__.items() if k not in self.__annotations__
         }

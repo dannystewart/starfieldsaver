@@ -29,7 +29,6 @@ class ProcessMonitor:
         self.logger = quicksave_utility.logger
 
         # Variables to track process information
-        self.game_process: str = self.saver.config.process_name
         self.game_is_running: bool = True
         self.game_in_foreground: bool = True
         self.last_foreground_process: str = ""
@@ -55,27 +54,24 @@ class ProcessMonitor:
 
     def is_game_running(self) -> bool:
         """Check if the game process is running."""
-        # Append .exe to filename if not already present
-        self.game_process = self.saver.config.process_name
-        if not self.saver.config.process_name.endswith(".exe"):
-            self.game_process = f"{self.game_process}.exe"
-
         # Check for the game process
         is_running = any(
-            process.info["name"].lower() == self.game_process.lower()
+            process.info["name"].lower() == self.saver.config.process_name.lower()
             for process in psutil.process_iter(["name"])
         )
 
         if is_running != self.previous_game_running_state:
             if is_running:
-                self.logger.info("%s.exe has started.", self.saver.config.process_name)
+                self.logger.info("%s has started.", self.saver.config.process_name)
             else:
-                self.logger.info("%s.exe has quit.", self.saver.config.process_name)
+                self.logger.info("%s has quit.", self.saver.config.process_name)
             self.previous_game_running_state = is_running
 
         if not is_running:
             if self.game_is_running:
-                self.logger.info("Skipping checks while %s is not running.", self.game_process)
+                self.logger.info(
+                    "Skipping checks while %s is not running.", self.saver.config.process_name
+                )
             self.game_is_running = False
         else:
             self.game_is_running = True
@@ -89,11 +85,11 @@ class ProcessMonitor:
 
         if is_active != self.previous_game_foreground_state:
             if is_active:
-                self.logger.info("%s.exe has entered focus.", self.saver.config.process_name)
+                self.logger.info("%s has entered focus.", self.saver.config.process_name)
             else:
                 self.logger.info(
                     "%s is no longer in focus (%s now in focus).",
-                    f"{self.saver.config.process_name}.exe",
+                    f"{self.saver.config.process_name}",
                     foreground_process,
                 )
             self.previous_game_foreground_state = is_active
