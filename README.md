@@ -27,7 +27,7 @@ Configuration is stored in `starfieldsaver.toml` in the application directory. Y
 
 ```toml
 [paths]
-save_dir = "C:/Users/YourUsername/Documents/My Games/Starfield/Saves"
+save_dir = "C:\\Users\\YourUsername\\Documents\\My Games\\Starfield\\Saves"
 game_exe = "Starfield.exe"
 
 [saves]
@@ -49,8 +49,10 @@ enable_debug = false
 
 #### Paths
 
-- `save_dir`: Directory where Starfield saves are stored
-- `game_exe`: Name of the game process to monitor (with or without .exe)
+- `save_dir`: Directory where Starfield saves are stored.
+- `game_exe`: Name of the game process to monitor (with or without .exe).
+
+**IMPORTANT:** In TOML, backslashes are escape characters. You can either use forward slashes (`C:/Users/YourName`) or double backslashes (`C:\\Users\\YourName`), but not single backslashes.
 
 #### Saves
 
