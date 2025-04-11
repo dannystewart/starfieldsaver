@@ -21,7 +21,7 @@ except ImportError:
         print("pynput is not installed. Please install it using 'pip install pynput'.")
     sys.exit(1)
 
-from starfieldsaver.config_loader import ConfigLoader
+from starfieldsaver.config_loader import ConfigLoader, get_config_file
 from starfieldsaver.process_monitor import ProcessMonitor
 from starfieldsaver.save_cleaner import SaveCleaner
 from starfieldsaver.sound_player import SoundPlayer
@@ -42,9 +42,18 @@ class StarfieldQuicksaver:
             "quicksave", level="debug" if self.config.enable_debug else "info"
         )
 
+        self.logger.info("Using config file: %s", get_config_file().absolute())
+
         self.keyboard = Controller()
         self.sound = SoundPlayer(self.logger)
         self.save_cleaner: SaveCleaner = SaveCleaner(self.config, self.logger)
+
+        # Validate save directory
+        save_dir = Path(self.config.save_dir)
+        if not save_dir.exists():
+            self.logger.error("Save directory does not exist: %s", save_dir)
+            self.logger.warning("Please update the configuration with a valid save directory.")
+            sys.exit(1)
 
         self.last_save_time: datetime | None = None
         self.last_copied_save_name: str | None = None

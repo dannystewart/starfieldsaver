@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,7 +19,22 @@ from watchdog.events import (
 if TYPE_CHECKING:
     from starfieldsaver.quicksaver import StarfieldQuicksaver
 
-CONFIG_FILE: Path = Path("starfieldsaver.toml")
+
+def get_config_file() -> Path:
+    """Get the configuration file path with appropriate precedence."""
+    config_filename = "starfieldsaver.toml"
+
+    # Check if running as executable
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys.executable).parent / config_filename
+
+    # Check current directory first (most accessible)
+    cwd_config = Path(config_filename)
+    if cwd_config.exists():
+        return cwd_config
+
+    # If we need to create a new config, use current directory
+    return cwd_config
 
 
 @dataclass
@@ -81,8 +97,8 @@ class QuicksaveConfig:
 class ConfigLoader:
     """Class for loading and saving the quicksave configuration."""
 
-    MAX_RETRIES = 3
-    RETRY_DELAY = 0.1
+    MAX_RETRIES: ClassVar[int] = 3
+    RETRY_DELAY: ClassVar[float] = 0.1
 
     @classmethod
     def load(cls) -> QuicksaveConfig:
@@ -91,18 +107,24 @@ class ConfigLoader:
         Raises:
             toml.TomlDecodeError: If the configuration file is malformed.
         """
+        config_file = get_config_file()
+
         for attempt in range(cls.MAX_RETRIES):
             try:
-                if not CONFIG_FILE.exists():
+                if not config_file.exists():
                     return cls._create_default_config()
-                with CONFIG_FILE.open(encoding="utf-8") as f:
+
+                with config_file.open(encoding="utf-8") as f:
                     config_data = toml.load(f)
+
                 return cls._process_config(config_data)
+
             except toml.TomlDecodeError:
                 if attempt < cls.MAX_RETRIES - 1:
                     time.sleep(cls.RETRY_DELAY)
                 else:
                     raise
+
         return cls._create_default_config()
 
     @classmethod
@@ -160,15 +182,16 @@ class ConfigLoader:
 
     @classmethod
     def _save_config(cls, config: QuicksaveConfig) -> None:
+        config_file = get_config_file()
+
         config_dict = {
             section: {k: getattr(config, k) for k in keys}
             for section, keys in QuicksaveConfig.config_structure.items()
         }
-        # Add any extra config items to a new section
         if config.extra_config:
             config_dict["extra"] = config.extra_config
 
-        with CONFIG_FILE.open("w", encoding="utf-8") as f:
+        with config_file.open("w", encoding="utf-8") as f:
             toml.dump(config_dict, f)
 
     @classmethod
@@ -184,10 +207,11 @@ class ConfigFileHandler(FileSystemEventHandler):
 
     def __init__(self, quicksave_utility: StarfieldQuicksaver):
         self.saver = quicksave_utility
+        self.config_file = str(get_config_file())
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         """Reload the configuration when the file is modified."""
-        if not event.is_directory and str(event.src_path).endswith(str(CONFIG_FILE)):
+        if not event.is_directory and str(event.src_path).endswith(self.config_file):
             self.saver.reload_config()
 
 
