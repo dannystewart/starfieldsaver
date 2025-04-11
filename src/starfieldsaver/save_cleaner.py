@@ -36,8 +36,10 @@ class SaveCleaner:
 
     def cleanup_old_saves(self) -> None:
         """Clean up old saves, keeping one per day beyond the cutoff date."""
-        if self.config.prune_older_than == 0:
-            self.logger.info("To enable save cleanup, change 'prune_older_than' to number of days.")
+        if self.config.prune_older_than_days == 0:
+            self.logger.info(
+                "To enable save cleanup, change 'prune_older_than_days' to a value greater than 0."
+            )
             return
 
         self.logger.info("Starting save cleanup process...")
@@ -56,7 +58,7 @@ class SaveCleaner:
         self.logger.info("Total saves found: %s", len(save_files))
 
         most_recent_save_time = datetime.fromtimestamp(save_files[0].stat().st_mtime, tz=TZ)
-        cutoff_date = most_recent_save_time - timedelta(days=self.config.prune_older_than)
+        cutoff_date = most_recent_save_time - timedelta(days=self.config.prune_older_than_days)
         self.logger.info("Cutoff date for save deletion: %s", cutoff_date)
 
         # Group saves by character

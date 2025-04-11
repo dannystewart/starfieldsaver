@@ -38,7 +38,7 @@ copy_to_regular_save = true
 enable_success_sounds = true
 
 [cleanup]
-prune_older_than = 0
+prune_older_than_days = 0
 dry_run = true
 
 [logging]
@@ -62,7 +62,7 @@ enable_debug = false
 
 #### Cleanup
 
-- `prune_older_than`: Number of days before pruning saves to one per day (0 to disable)
+- `prune_older_than_days`: Number of days before pruning saves to one per day (0 to disable)
 - `dry_run`: Test cleanup without deleting files (true/false)
 
 #### Logging

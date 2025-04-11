@@ -8,22 +8,29 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [0.2.0] (2025-04-11)
 
+### Added
+
+- Adds comprehensive README documentation with installation instructions, configuration examples, usage explanations, and troubleshooting tips.
+
 ### Changed
 
 - Renames `QuicksaveUtility` to `StarfieldQuicksaver` and moves its code to `main.py` for simpler organization.
+- Changes config file name to `starfieldsaver.toml` from `config.toml` for better namespacing.
 - Simplifies configuration options with shorter, more intuitive names:
   - `save_directory` → `save_dir`
   - `status_check_interval` → `check_interval`
   - `enable_quicksave_on_interval` → `enable_quicksave`
   - `enable_copy_to_regular_save` → `copy_to_regular_save`
-  - `prune_saves_older_than` → `prune_older_than`
+  - `prune_saves_older_than` → `prune_older_than_days`
 - Converts `SaveType` from `Enum` to `StrEnum` for more readable code.
+- Improves process name handling by centralizing logic and moving `.exe` suffix handling to initialization.
+- Updates PyInstaller build output path from root directory to `dist` folder
 - Adds project classifiers with metadata about development status, environment, and supported Python versions.
 
 ### Removed
 
-- Removes Windows batch file (`starfield_saver.bat`) and executable (`starfield_saver.exe`) from distribution—now you'll need to install via pip like a proper Constellation agent.
-- Removes some unimplemented configuration options, including `info_volume` and `error_volume` (use `enable_success_sounds` instead) as well as `enable_save_cleanup` (redundant to `prune_older_than` being greater than zero).
+- Removes unimplemented config settings, including `info_volume` and `error_volume` (use `enable_success_sounds` instead) as well as `enable_save_cleanup` (redundant to `prune_older_than_days` being greater than zero).
+- Removes Windows executable from distribution. Install via `pip` or grab from the Releases page instead.
 
 ### Fixed
 
@@ -57,4 +64,5 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 <!-- Versions -->
 [unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/dannystewart/starfieldsaver/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/dannystewart/starfieldsaver/releases/tag/v0.1.1
+[0.1.1]: https://github.com/dannystewart/starfieldsaver/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/dannystewart/starfieldsaver/releases/tag/v0.1.0
