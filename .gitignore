@@ -138,6 +138,10 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Exclude TOML files except for Ruff
+*.toml
+!ruff.toml
+
 # Other files
 .sync.ffs_db
 .DS_Store
