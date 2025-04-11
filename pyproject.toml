@@ -1,6 +1,6 @@
 [project]
 name = "starfieldsaver"
-version = "0.1.2"
+version = "0.2.0.dev"
 description = "Starfield automatic quicksave and backup utility"
 authors = [{ name = "Danny Stewart", email = "danny@stewart.cc" }]
 readme = "README.md"
@@ -34,7 +34,7 @@ classifiers = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.4"
+ruff = "^0.11.5"
 mypy = "^1.15.0"
 pyinstaller = "^6.12.0"
 

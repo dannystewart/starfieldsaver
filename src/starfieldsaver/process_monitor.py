@@ -18,14 +18,14 @@ if sys.platform == "win32":
     import win32process  # type: ignore
 
 if TYPE_CHECKING:
-    from starfieldsaver.quicksave_utility import QuicksaveUtility
+    from starfieldsaver import StarfieldQuicksaver
 
 
 class ProcessMonitor:
     """Process monitor for Starfield quicksave utility."""
 
-    def __init__(self, quicksave_utility: QuicksaveUtility):
-        self.saver: QuicksaveUtility = quicksave_utility
+    def __init__(self, quicksave_utility: StarfieldQuicksaver):
+        self.saver: StarfieldQuicksaver = quicksave_utility
         self.logger = quicksave_utility.logger
 
         # Variables to track process information
@@ -135,7 +135,7 @@ class ProcessMonitor:
         """Set up a file watcher to monitor the save directory."""
         self.save_observer = Observer()
         handler = SaveFileHandler(self.saver)
-        self.save_observer.schedule(handler, path=self.saver.config.save_directory, recursive=False)
+        self.save_observer.schedule(handler, path=self.saver.config.save_dir, recursive=False)
         self.save_observer.start()
 
     def check_logging_status(self) -> None:

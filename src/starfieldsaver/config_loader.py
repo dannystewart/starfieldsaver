@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -18,10 +18,18 @@ from watchdog.events import (
 )
 
 if TYPE_CHECKING:
-    from starfieldsaver.quicksave_utility import QuicksaveUtility
+    from starfieldsaver import StarfieldQuicksaver
 
-CONFIG_FILE_NAME: str = "config.toml"
+CONFIG_FILE_NAME: str = "starfieldsaver.toml"
 CONFIG_FILE: Path = PolyPath("starfieldsaver").from_config(CONFIG_FILE_NAME)
+
+
+class SaveType(StrEnum):
+    """Save types for Starfield."""
+
+    QUICKSAVE = "quicksave"
+    AUTOSAVE = "autosave"
+    MANUAL = "manual save"
 
 
 @dataclass
@@ -29,48 +37,42 @@ class QuicksaveConfig:
     """Configuration for behavior of the quicksave utility.
 
     Attributes:
-        save_directory: Directory where save files are stored.
-        process_name: Name of the game process to monitor (without extension).
-        status_check_interval: Time between status checks (in seconds).
+        save_dir: Directory where save files are stored.
+        process_name: Name of the game process to monitor.
+        check_interval: Time between status checks (in seconds).
         quicksave_every: Time between quicksaves (in seconds).
-        enable_quicksave_on_interval: Whether to quicksave on the set interval.
-        enable_copy_to_regular_save: Whether to copy quicksaves to regular saves.
-        enable_save_cleanup: Whether to enable save cleanup.
-        prune_saves_older_than: Number of days before pruning saves to one per day (0 to keep all).
-        dry_run: Whether to perform a dry run of save cleanup.
-        enable_sounds: Whether to play sounds on events.
-        info_volume: Volume for info sounds (0.0 to 1.0).
-        error_volume: Volume for error sounds (0.0 to 1.0).
-        debug_log: Whether to enable debug logging.
+        enable_quicksave: Whether to enable quicksaving on the set interval.
+        copy_to_regular_save: Whether to copy quicksaves to regular saves.
+        prune_older_than: Number of days before pruning saves to one per day (0 to keep all).
+        dry_run: Whether to perform a dry run of save cleanup (log only).
+        enable_success_sounds: Whether to play sounds on events.
+        enable_debug: Whether to enable debug logging.
     """
 
-    save_directory: str
-    process_name: str = "Starfield"
-    status_check_interval: float = 10
+    save_dir: str
+    process_name: str = "Starfield.exe"
+    enable_quicksave: bool = True
+    check_interval: float = 10
     quicksave_every: float = 240
-    enable_quicksave_on_interval: bool = True
-    enable_copy_to_regular_save: bool = True
-    enable_save_cleanup: bool = False
-    prune_saves_older_than: int = 0
+    copy_to_regular_save: bool = True
+    prune_older_than: int = 0
     dry_run: bool = True
-    enable_sounds: bool = True
-    info_volume: float = 0.1
-    error_volume: float = 0.5
-    debug_log: bool = False
+    enable_success_sounds: bool = True
+    enable_debug: bool = False
     extra_config: dict[str, Any] = field(default_factory=dict)
 
     # Define the structure of the TOML file
     config_structure: ClassVar[dict[str, list[str]]] = {
-        "paths": ["save_directory", "process_name"],
+        "paths": ["save_dir", "process_name"],
         "saves": [
-            "status_check_interval",
+            "enable_quicksave",
+            "check_interval",
             "quicksave_every",
-            "enable_quicksave_on_interval",
-            "enable_copy_to_regular_save",
+            "copy_to_regular_save",
+            "enable_success_sounds",
         ],
-        "cleanup": ["enable_save_cleanup", "prune_saves_older_than", "dry_run"],
-        "sounds": ["enable_sounds", "info_volume", "error_volume"],
-        "logging": ["debug_log"],
+        "cleanup": ["prune_older_than", "dry_run"],
+        "logging": ["enable_debug"],
     }
 
     def __post_init__(self):
@@ -113,8 +115,8 @@ class ConfigLoader:
         """Reload the configuration from the TOML file."""
         try:
             new_config = cls.load()
-            if current_config.debug_log != new_config.debug_log:
-                cls._update_logger_level(logger, new_config.debug_log)
+            if current_config.enable_debug != new_config.enable_debug:
+                cls._update_logger_level(logger, new_config.enable_debug)
             logger.info("Reloaded config due to modification on disk.")
             return new_config
         except Exception as e:
@@ -125,12 +127,12 @@ class ConfigLoader:
             return current_config
 
     @staticmethod
-    def _update_logger_level(logger: logging.Logger, debug_log: bool) -> None:
-        new_level = logging.DEBUG if debug_log else logging.INFO
+    def _update_logger_level(logger: logging.Logger, debug: bool) -> None:
+        new_level = logging.DEBUG if debug else logging.INFO
         logger.setLevel(new_level)
         for handler in logger.handlers:
             handler.setLevel(new_level)
-        logger.info("Logger level updated to %s.", "debug" if debug_log else "info")
+        logger.info("Logger level updated to %s.", "debug" if debug else "info")
 
     @classmethod
     def _process_config(cls, config_data: dict[str, Any]) -> QuicksaveConfig:
@@ -149,7 +151,7 @@ class ConfigLoader:
         config.extra_config = flat_config
 
         # Check for missing attributes and add them with default values
-        default_config = QuicksaveConfig(save_directory=config.save_directory)
+        default_config = QuicksaveConfig(save_dir=config.save_dir)
         updated = False
         for attr, value in default_config.__dict__.items():
             if attr not in known_attrs and attr != "extra_config":
@@ -182,21 +184,10 @@ class ConfigLoader:
         return config
 
 
-class SaveType(Enum):
-    """Enumeration of save types for Starfield."""
-
-    QUICKSAVE = "quicksave"
-    AUTOSAVE = "autosave"
-    MANUAL = "manual save"
-
-    def __str__(self):
-        return self.value
-
-
 class ConfigFileHandler(FileSystemEventHandler):
     """Watchdog event handler for changes to the quicksave configuration file."""
 
-    def __init__(self, quicksave_utility: QuicksaveUtility):
+    def __init__(self, quicksave_utility: StarfieldQuicksaver):
         self.saver = quicksave_utility
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
@@ -208,7 +199,7 @@ class ConfigFileHandler(FileSystemEventHandler):
 class SaveFileHandler(FileSystemEventHandler):
     """Watchdog event handler for changes to the save directory."""
 
-    def __init__(self, quicksave_utility: QuicksaveUtility):
+    def __init__(self, quicksave_utility: StarfieldQuicksaver):
         self.saver = quicksave_utility
 
     def on_moved(self, event: FileMovedEvent | DirMovedEvent) -> None:
@@ -220,7 +211,7 @@ class SaveFileHandler(FileSystemEventHandler):
         )
 
         if not event.is_directory and str(event.dest_path).endswith(".sfs"):
-            if self.saver.config.enable_copy_to_regular_save:
+            if self.saver.config.copy_to_regular_save:
                 self.saver.new_game_save_detected(str(event.dest_path))
         else:
             self.saver.logger.debug("Moved file is not a game save, ignoring.")

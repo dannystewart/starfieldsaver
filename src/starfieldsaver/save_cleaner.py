@@ -36,22 +36,14 @@ class SaveCleaner:
 
     def cleanup_old_saves(self) -> None:
         """Clean up old saves, keeping one per day beyond the cutoff date."""
-        if not self.config.enable_save_cleanup:
-            self.logger.info(
-                "Save cleanup not enabled. Set 'enable_save_cleanup' to 'true' to enable."
-            )
-            return
-
-        if self.config.prune_saves_older_than == 0:
-            self.logger.warning(
-                "Save cleanup enabled but 'prune_saves_older_than' is set to 0 days."
-            )
+        if self.config.prune_older_than == 0:
+            self.logger.info("To enable save cleanup, change 'prune_older_than' to number of days.")
             return
 
         self.logger.info("Starting save cleanup process...")
 
         save_files = PolyFile.list(
-            Path(self.config.save_directory),
+            Path(self.config.save_dir),
             extensions=["sfs"],
             sort_key=lambda x: x.stat().st_mtime,
             reverse=True,
@@ -64,7 +56,7 @@ class SaveCleaner:
         self.logger.info("Total saves found: %s", len(save_files))
 
         most_recent_save_time = datetime.fromtimestamp(save_files[0].stat().st_mtime, tz=TZ)
-        cutoff_date = most_recent_save_time - timedelta(days=self.config.prune_saves_older_than)
+        cutoff_date = most_recent_save_time - timedelta(days=self.config.prune_older_than)
         self.logger.info("Cutoff date for save deletion: %s", cutoff_date)
 
         # Group saves by character

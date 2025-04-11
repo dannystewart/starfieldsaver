@@ -6,11 +6,28 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
-## [0.1.2] - Unreleased
+## [0.2.0] (2025-04-11)
+
+### Changed
+
+- Renames `QuicksaveUtility` to `StarfieldQuicksaver` and moves its code to `main.py` for simpler organization.
+- Simplifies configuration options with shorter, more intuitive names:
+  - `save_directory` → `save_dir`
+  - `status_check_interval` → `check_interval`
+  - `enable_quicksave_on_interval` → `enable_quicksave`
+  - `enable_copy_to_regular_save` → `copy_to_regular_save`
+  - `prune_saves_older_than` → `prune_older_than`
+- Converts `SaveType` from `Enum` to `StrEnum` for more readable code.
+- Adds project classifiers with metadata about development status, environment, and supported Python versions.
+
+### Removed
+
+- Removes Windows batch file (`starfield_saver.bat`) and executable (`starfield_saver.exe`) from distribution—now you'll need to install via pip like a proper Constellation agent.
+- Removes some unimplemented configuration options, including `info_volume` and `error_volume` (use `enable_success_sounds` instead) as well as `enable_save_cleanup` (redundant to `prune_older_than` being greater than zero).
 
 ### Fixed
 
-- Fixes process name display in log messages by appending the `.exe` extension, ensuring you know exactly which process is ignoring your desperate attempts to save.
+- Fixes process focus logging to include the `.exe` extension for clarity and because Windows needs to be reminded everything's an executable.
 
 ## [0.1.1] (2025-04-09)
 
@@ -38,6 +55,6 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 <!-- Versions -->
-[unreleased]: https://github.com/dannystewart/starfield-saver/compare/v0.1.2...HEAD
-[0.1.2]: https://github.com/dannystewart/starfield-saver/releases/tag/v0.1.2
-[0.1.1]: https://github.com/dannystewart/starfield-saver/compare/v0.1.0...v0.1.1
+[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dannystewart/starfieldsaver/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/dannystewart/starfieldsaver/releases/tag/v0.1.1

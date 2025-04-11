@@ -22,8 +22,9 @@ except ImportError:
 class SoundPlayer:
     """Class for handling playback of notification sounds."""
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: logging.Logger, enable_success_sounds: bool = True) -> None:
         self.logger = logger
+        self.enable_success_sounds = enable_success_sounds
         self.setup_sound_system()
 
     def __del__(self):
@@ -46,7 +47,7 @@ class SoundPlayer:
         freq: int,
         duration: float,
         pause: float = 0.0,
-        vol: float = 0.5,  # noqa: ARG002
+        vol: float = 0.5,  # noqa: ARG002 (not used by winsound)
     ) -> None:
         """Wrapper for winsound_beep that matches the play_beep signature."""
         self.winsound_beep(freq, duration)
@@ -55,18 +56,30 @@ class SoundPlayer:
 
     def play_success(self) -> None:
         """Play a success sound to indicate a save action."""
-        self.logger.debug("Playing success sound.")
+        if not self.enable_success_sounds:
+            return
+
+        self.logger.debug(
+            "Playing success sound%s.", " (muted)" if not self.enable_success_sounds else ""
+        )
         self.play_beep(440, 0.05, pause=0, vol=0.1)
 
     def play_notification(self) -> None:
         """Play an info sound to update the user."""
-        self.logger.debug("Playing info sound.")
+        if not self.enable_success_sounds:
+            return
+
+        self.logger.debug(
+            "Playing info sound%s.", " (muted)" if not self.enable_success_sounds else ""
+        )
         self.play_beep(400, 0.1, pause=0, vol=0.1)
         self.play_beep(800, 0.1, pause=0, vol=0.1)
 
     def play_error(self) -> None:
         """Play an error sound to alert the user."""
-        self.logger.debug("Playing error sound.")
+        self.logger.debug(
+            "Playing error sound%s.", " (muted)" if not self.enable_success_sounds else ""
+        )
         for _ in range(2):
             self.play_beep(500, 0.2, pause=0.1, vol=0.5)
             self.play_beep(300, 0.3, pause=0.2, vol=0.5)
