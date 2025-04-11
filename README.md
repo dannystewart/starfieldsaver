@@ -98,9 +98,3 @@ The utility provides audio feedback for successful saves, manual quicksaves dete
 You can use the `enable_success_sounds` config option to disable success and notification sounds to avoid disrupting your immersion.
 
 **NOTE:** Error sounds will always play, so you'll know when something has gone wrong and your game may not have saved correctly.
-
-## Troubleshooting
-
-- **Game not detected**: Ensure the correct `game_exe` is set in starfieldsaver.toml.
-- **Saves not detected**: Verify the `save_dir` path is correct.
-- **No sounds**: Check that `enable_success_sounds` is set to true.
