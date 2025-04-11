@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 - Improves `pynput` import error handling on non-Windows platforms.
 - Fixes conditional importing of `pynput.keyboard` to prevent errors on non-Windows platforms.
-- Corrects game process name assignment when appending `.exe` extension - we were using the wrong variable name (oops!).
+- Corrects game process name assignment when appending `.exe` extension.
 
 ## [0.2.1] (2025-04-11)
 
