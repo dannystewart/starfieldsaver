@@ -8,15 +8,15 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [0.2.2] (2025-04-11)
 
-## Changed
+### Changed
 
 - Renames `process_name` config variable to `game_exe` for better clarity and consistency.
 
-## Removed
+### Removed
 
 - Removes GitHub Pages documentation workflow, because it was causing problems for the sake of documentation that didn't exist anyway.
 
-## Fixed
+### Fixed
 
 - Improves `pynput` import error handling on non-Windows platforms.
 - Fixes conditional importing of `pynput.keyboard` to prevent errors on non-Windows platforms.
