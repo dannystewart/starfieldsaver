@@ -16,8 +16,8 @@ from polykit.log import PolyLog
 
 if not platform_check("Windows"):
     sys.exit(1)
-
-from pynput.keyboard import Controller, Key
+else:
+    from pynput.keyboard import Controller, Key
 
 from starfieldsaver.config_loader import ConfigLoader, SaveType
 from starfieldsaver.process_monitor import ProcessMonitor
