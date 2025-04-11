@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import toml
-from polykit.paths import PolyPath
 from watchdog.events import (
     DirModifiedEvent,
     DirMovedEvent,
@@ -20,8 +19,7 @@ from watchdog.events import (
 if TYPE_CHECKING:
     from starfieldsaver import StarfieldQuicksaver
 
-CONFIG_FILE_NAME: str = "starfieldsaver.toml"
-CONFIG_FILE: Path = PolyPath("starfieldsaver").from_config(CONFIG_FILE_NAME)
+CONFIG_FILE: Path = Path("starfieldsaver.toml")
 
 
 class SaveType(StrEnum):
@@ -192,7 +190,7 @@ class ConfigFileHandler(FileSystemEventHandler):
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         """Reload the configuration when the file is modified."""
-        if not event.is_directory and str(event.src_path).endswith(CONFIG_FILE_NAME):
+        if not event.is_directory and str(event.src_path).endswith(CONFIG_FILE):
             self.saver.reload_config()
 
 

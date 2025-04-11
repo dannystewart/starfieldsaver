@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pyinstaller import EXE, PYZ, Analysis
-
 a = Analysis(
     ["src/starfieldsaver/main.py"],
     pathex=[],
