@@ -1,6 +1,6 @@
 [project]
 name = "starfieldsaver"
-version = "0.2.4"
+version = "0.2.5"
 description = "Starfield automatic quicksave and backup utility"
 authors = [{ name = "Danny Stewart", email = "danny@stewart.cc" }]
 readme = "README.md"
