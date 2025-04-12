@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+## [0.2.5] (2025-04-11)
+
+### Fixed
+
+- Improves error handling for foreground window detection when encountering unexpected window states. Now handles invalid window/process IDs and provides meaningful fallback values when it can't figure out what window's in front, rather than allowing the error to bubble up to the main loop.
+
 ## [0.2.4] (2025-04-11)
 
 ### Fixed
@@ -115,7 +121,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 <!-- Versions -->
-[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.4...HEAD
+[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.1...v0.2.2

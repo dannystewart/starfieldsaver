@@ -109,16 +109,37 @@ class ProcessMonitor:
         if sys.platform != "win32":
             return ""
 
-        hwnd = win32gui.GetForegroundWindow()
-        _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        handle = win32api.OpenProcess(
-            win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid
-        )
         try:
-            process_path = win32process.GetModuleFileNameEx(handle, 0)
-            return Path(process_path).name
-        finally:
-            win32api.CloseHandle(handle)
+            hwnd = win32gui.GetForegroundWindow()
+            if hwnd == 0:  # No foreground window
+                return "No foreground window"
+
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            if pid == 0:  # Invalid process ID
+                return "Unknown process"
+
+            try:
+                handle = win32api.OpenProcess(
+                    win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid
+                )
+                if not handle:
+                    return f"Process {pid}"
+
+                try:
+                    process_path = win32process.GetModuleFileNameEx(handle, 0)
+                    return Path(process_path).name
+                except Exception as e:
+                    self.logger.debug("Error getting module filename: %s", str(e))
+                    return f"Process {pid}"
+                finally:
+                    if handle:
+                        win32api.CloseHandle(handle)
+            except Exception as e:
+                self.logger.debug("Error opening process handle: %s", str(e))
+                return f"Process {pid}"
+        except Exception as e:
+            self.logger.debug("Error getting foreground window info: %s", str(e))
+            return "Window transition"
 
     def setup_config_watcher(self) -> None:
         """Set up a file watcher to monitor the config file."""
