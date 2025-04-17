@@ -135,10 +135,18 @@ class SaveCleaner:
     def _parse_save_name(self, save_path: str) -> tuple[str | None, datetime | None]:
         """Extract character ID and timestamp from save file name."""
         filename = Path(save_path).name
+
+        # Skip known non-save files
+        if filename == "funclist.sfs" or not filename.startswith("Save"):
+            self.logger.debug("Skipping non-save file: %s", filename)
+            return None, None
+
         parts = filename.split("_")
 
-        # Try to find the timestamp by looking for a part that starts with '202'
-        timestamp_part = next((part for part in parts if part.startswith("202")), None)
+        # Try to find the timestamp by looking for a part that matches the date format
+        timestamp_part = next(
+            (part for part in parts if len(part) == 14 and part.startswith("202")), None
+        )
 
         # If not found, try getting the 5th part from the end (assuming consistent format)
         if not timestamp_part and len(parts) >= 5:
@@ -149,7 +157,8 @@ class SaveCleaner:
             return None, None
 
         try:
-            timestamp = datetime.strptime(timestamp_part, "%Y%m%d%H%M%S%z")
+            timestamp = datetime.strptime(timestamp_part, "%Y%m%d%H%M%S")  # noqa: DTZ007
+            timestamp = timestamp.replace(tzinfo=TZ)
         except ValueError:
             self.logger.warning("Invalid timestamp format in filename: %s", filename)
             return None, None
