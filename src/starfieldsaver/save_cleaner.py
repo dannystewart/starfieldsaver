@@ -78,22 +78,26 @@ class SaveCleaner:
         self.logger.info("Total saves to delete: %s", len(files_to_delete))
         self.logger.info("Total saves to keep: %s", len(save_files) - len(files_to_delete))
 
-        successful, failed = PolyFile.delete(files_to_delete, dry_run=self.config.dry_run)
-
         if self.config.dry_run:
             self.logger.info(
-                "Dry run: would delete %s old saves across all characters.", successful
+                "Dry run: would delete %s old saves across all characters.", len(files_to_delete)
             )
-        else:
-            self.logger.info(
-                "Save cleanup complete. Kept %s saves, deleted %s saves, failed to delete %s saves.",
-                len(save_files) - len(files_to_delete),
-                successful,
-                failed,
-            )
+            return  # Don't attempt to delete files in dry run mode
 
-        if len(failed) > 0:
-            self.logger.warning("Failed to delete %s saves.", failed)
+        # Only attempt to delete files if not in dry run mode
+        successful, failed = PolyFile.delete(files_to_delete)
+
+        self.logger.info(
+            "Save cleanup complete. Kept %s saves, deleted %s saves, failed to delete %s saves.",
+            len(save_files) - len(files_to_delete),
+            successful,
+            len(failed),
+        )
+
+        if failed:
+            self.logger.warning("Failed to delete %s saves.", len(failed))
+            if len(failed) > 10:  # Log a sample of failed files if there are too many to log all
+                self.logger.warning("First 10 failures: %s", failed[:10])
 
     def _get_files_to_delete(
         self, saves: list[tuple[Path, datetime]], cutoff_date: datetime
