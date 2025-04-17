@@ -13,6 +13,7 @@ from polykit.core import platform_check
 from polykit.files import PolyFile
 from polykit.formatters import TZ
 from polykit.log import PolyLog
+from pynput.keyboard import Key, KeyCode, Listener
 
 try:
     from pynput.keyboard import Controller, Key
@@ -62,6 +63,11 @@ class StarfieldQuicksaver:
         self.monitor = ProcessMonitor(self)
         self._log_current_config()
 
+        # Set up keyboard listener for quit functionality
+        self.keyboard_listener = Listener(on_press=self._on_key_press)
+        self.keyboard_listener.start()
+        self.logger.info("Press 'Q' to quit the application.")
+
     def run(self) -> None:
         """Run the quicksave utility."""
         self.logger.info("Started quicksave utility for %s.", self.config.game_exe)
@@ -82,6 +88,7 @@ class StarfieldQuicksaver:
             self.monitor.config_observer.join()
             self.monitor.save_observer.stop()
             self.monitor.save_observer.join()
+            self._cleanup_and_exit()
 
     def _main_loop(self) -> None:
         while True:
@@ -233,6 +240,34 @@ class StarfieldQuicksaver:
             next_save_id = int("1" + "0" * (expected_digits - 1))
 
         return highest_save_id, next_save_id
+
+    def _on_key_press(self, key: Key | KeyCode | None) -> None:
+        """Handle keyboard input to allow quitting with 'Q'."""
+        try:
+            if key == KeyCode.from_char("q") or key == KeyCode.from_char("Q"):
+                self.logger.info("Quit key pressed. Exiting application...")
+                self._cleanup_and_exit()
+                return False  # Stop the listener
+        except AttributeError:
+            # Special keys like function keys don't have a char attribute
+            pass
+
+    def _cleanup_and_exit(self):
+        """Clean up resources and exit the application."""
+        if hasattr(self, "monitor"):
+            if hasattr(self.monitor, "config_observer"):
+                self.monitor.config_observer.stop()
+                self.monitor.config_observer.join()
+            if hasattr(self.monitor, "save_observer"):
+                self.monitor.save_observer.stop()
+                self.monitor.save_observer.join()
+
+        # Stop the keyboard listener
+        if hasattr(self, "keyboard_listener"):
+            self.keyboard_listener.stop()
+
+        # Exit the application
+        sys.exit(0)
 
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""
