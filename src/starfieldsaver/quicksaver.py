@@ -247,27 +247,30 @@ class StarfieldQuicksaver:
             if key == KeyCode.from_char("q") or key == KeyCode.from_char("Q"):
                 self.logger.info("Quit key pressed. Exiting application...")
                 self._cleanup_and_exit()
-                return False  # Stop the listener
         except AttributeError:
-            # Special keys like function keys don't have a char attribute
-            pass
+            pass  # Special keys like function keys don't have a char attribute
 
     def _cleanup_and_exit(self):
         """Clean up resources and exit the application."""
-        if hasattr(self, "monitor"):
-            if hasattr(self.monitor, "config_observer"):
-                self.monitor.config_observer.stop()
-                self.monitor.config_observer.join()
-            if hasattr(self.monitor, "save_observer"):
-                self.monitor.save_observer.stop()
-                self.monitor.save_observer.join()
+        try:
+            # Stop all observers and listeners
+            if hasattr(self, "monitor"):
+                if hasattr(self.monitor, "config_observer"):
+                    self.monitor.config_observer.stop()
+                    self.monitor.config_observer.join(timeout=1.0)
+                if hasattr(self.monitor, "save_observer"):
+                    self.monitor.save_observer.stop()
+                    self.monitor.save_observer.join(timeout=1.0)
 
-        # Stop the keyboard listener
-        if hasattr(self, "keyboard_listener"):
-            self.keyboard_listener.stop()
+            # Stop the keyboard listener
+            if hasattr(self, "keyboard_listener"):
+                self.keyboard_listener.stop()
+        except Exception as e:
+            self.logger.error("Error during cleanup: %s", str(e))
 
-        # Exit the application
-        sys.exit(0)
+        import os
+
+        os._exit(0)
 
     def reload_config(self) -> None:
         """Reload the configuration from the JSON file."""
