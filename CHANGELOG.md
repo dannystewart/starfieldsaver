@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+## [0.2.6] (2025-05-19)
+
+## Added
+
+- Adds GitHub Pages documentation workflow with Tokyo Night theme for automatically building and publishing package documentation.
+
+## Changed
+
+- Updates dependencies to latest versions, including Poetry 2.1.3 and numerous package upgrades for improved stability and performance.
+- Improves file deletion failure logging with clearer variable names and more readable output of failed files.
+
+## Fixed
+
+- Fixes save file detection by skipping known non-save files like "funclist.sfs" and improving timestamp detection.
+- Improves application exit handling with better resource cleanup and more reliable termination.
+- Enhances dry run mode to properly prevent actual file deletions and improves error handling for failed deletions.
+
 ## [0.2.5] (2025-04-11)
 
 ### Fixed
@@ -121,7 +138,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 <!-- Versions -->
-[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.5...HEAD
+[unreleased]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/dannystewart/starfieldsaver/compare/v0.2.2...v0.2.3
