@@ -139,7 +139,7 @@ class ConfigLoader:
         except Exception as e:
             logger.warning(
                 "Failed to reload config after multiple attempts: %s. Continuing with previous config.",
-                str(e),
+                e,
             )
             return current_config
 

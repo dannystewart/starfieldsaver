@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psutil
-from polykit.formatters import TZ
+from polykit import TZ
 from watchdog.observers import Observer
 
 from starfieldsaver.config_loader import ConfigFileHandler, SaveFileHandler
@@ -129,16 +129,16 @@ class ProcessMonitor:
                     process_path = win32process.GetModuleFileNameEx(handle, 0)
                     return Path(process_path).name
                 except Exception as e:
-                    self.logger.debug("Error getting module filename: %s", str(e))
+                    self.logger.debug("Error getting module filename: %s", e)
                     return f"Process {pid}"
                 finally:
                     if handle:
                         win32api.CloseHandle(handle)
             except Exception as e:
-                self.logger.debug("Error opening process handle: %s", str(e))
+                self.logger.debug("Error opening process handle: %s", e)
                 return f"Process {pid}"
         except Exception as e:
-            self.logger.debug("Error getting foreground window info: %s", str(e))
+            self.logger.debug("Error getting foreground window info: %s", e)
             return "Window transition"
 
     def setup_config_watcher(self) -> None:

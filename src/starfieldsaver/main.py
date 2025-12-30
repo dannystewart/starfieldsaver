@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from polykit import PolyLog
 from polykit.core import polykit_setup
-from polykit.log import PolyLog
 
 from starfieldsaver.quicksaver import StarfieldQuicksaver
 
@@ -17,7 +17,7 @@ def main():
     try:
         StarfieldQuicksaver().run()
     except Exception as e:
-        logger.error("An error occurred while running the application: %s", str(e))
+        logger.error("An error occurred while running the application: %s", e)
 
 
 if __name__ == "__main__":

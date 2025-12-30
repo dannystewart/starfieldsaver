@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from polykit.files import PolyFile
-from polykit.formatters import TZ
+from polykit import TZ, PolyFile
 
 from starfieldsaver.config_loader import QuicksaveConfig
 

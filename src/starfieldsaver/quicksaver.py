@@ -9,10 +9,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from polykit import TZ, PolyFile, PolyLog
 from polykit.core import platform_check
-from polykit.files import PolyFile
-from polykit.formatters import TZ
-from polykit.log import PolyLog
 from pynput.keyboard import Key, KeyCode, Listener
 
 try:
@@ -81,7 +79,7 @@ class StarfieldQuicksaver:
             self.logger.info("Exiting quicksave utility.")
             sys.exit(0)
         except Exception as e:
-            self.logger.error("An error occurred: %s", str(e))
+            self.logger.error("An error occurred: %s", e)
             self.sound.play_error()
         finally:
             self.monitor.config_observer.stop()
@@ -108,7 +106,7 @@ class StarfieldQuicksaver:
                 self.save_cleaner.cleanup_saves_if_scheduled()
 
             except Exception as e:
-                self.logger.error("An error occurred during the main loop: %s", str(e))
+                self.logger.error("An error occurred during the main loop: %s", e)
                 self.sound.play_error()
                 time.sleep(2)  # Prevent rapid error loop
 
@@ -182,7 +180,7 @@ class StarfieldQuicksaver:
         try:
             return self._perform_file_copy(source, str(destination), scheduled, auto)
         except Exception as e:
-            self.logger.error("Failed to copy file: %s", str(e))
+            self.logger.error("Failed to copy file: %s", e)
             self.sound.play_error()
             return False
 
@@ -266,7 +264,7 @@ class StarfieldQuicksaver:
             if hasattr(self, "keyboard_listener"):
                 self.keyboard_listener.stop()
         except Exception as e:
-            self.logger.error("Error during cleanup: %s", str(e))
+            self.logger.error("Error during cleanup: %s", e)
 
         import os
 
